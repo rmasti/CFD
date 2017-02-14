@@ -6,7 +6,6 @@
  */
 #ifndef nozzle_H_
 #define nozzle_H_
-
 #define N 300
 #define xmax 1.5
 #define xmin -1.5
@@ -32,6 +31,8 @@ struct constants
   bool cond; //0 for subsonic vs //1 for 
   double tol;
   double gamma;
+  double dx;
+  double nmax;
 };
 // create consvar structure uses type double
 struct consvar
@@ -48,6 +49,6 @@ primvar constoprim(consvar U, constants C);
 primvar exactsol(double A_x, constants stagpTAcond);
 double A_x(double xcoord);
 double dAdx(double x);
-void isentropic();
+void isentropicExact(constants consts);
 
 #endif

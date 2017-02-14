@@ -19,28 +19,38 @@ int main()
   //isentropic exact soln
   //isentropic fvm
   //shock fvm
-  isentropic();
+ 
+  constants consts; //constants is a struct declared in the header file
+  consts.p0 = 300.0; //kPa
+  consts.T0 = 600.0; //K
+  consts.A_t = A_x(0.0);//should be m^2
+  consts.cond = true;
+  consts.tol = 1.0e-8;
+  consts.gamma = 1.4;
+  consts.dx = (xmax-xmin)/N;
+  consts.nmax = 50000;
+  double xarr[N];
+  xarr[0] = xmin;
+  for (int i=0; i<N; i++)
+  {
+    xarr[i+1]=xarr[i]+consts.dx;
+    cout << "xarr [i] = " << xarr[i] << endl;
+  } 
+    cout << "xarr [i] = " << xarr[N] << endl;
+//  isentropicExact(consts);
   return 0;
 }
 
-void isentropic()
+void isentropicExact(constants consts)
 {
   ofstream dataout; //create an output stream note iomanip lib must be included to change prec
   dataout.open ("exactsol.txt");// the file to open is data.txt in the dir in which it is run
   /********************************************************************************/
   /************************* Set Constants and D structs **************************/
   /********************************************************************************/
-  constants consts; //constants is a struct declared in the header file
   double x[N]; //array of x values from -1 to 1 as defined in the problem
   double Aarr[N]; //array of areas that will be passed to the rootfinder funct.
   primvar prvparr[N]; //Another data struct defined in header.
-  consts.p0 = 300.0; //kPa
-  consts.T0 = 600.0; //K
-  consts.A_t = A_x(0.0);//should be m^2
-  consts.cond = true;
-  consts.p0 = 300.0; //kPa
-  consts.tol = 1.0e-8;
-  consts.gamma = 1.4;
   /********************************************************************************/
   /***************************** Loop Over N Segments *****************************/
   /********************************************************************************/
