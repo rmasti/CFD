@@ -11,7 +11,7 @@
 #include "nozzle.h" //structure templates and func prototypes
 #include <fstream>
 #include <iomanip>
-
+using namespace std;
 // This function converts a conservative variable vector into a primitive variable vector
 primvar constoprim(consvar U, constants C)
 {
@@ -19,43 +19,34 @@ primvar constoprim(consvar U, constants C)
   out.rho = U.rho;
   double invrho = 1.0/U.rho;
   out.u = U.rhou*invrho;
+  out.v = U.rhov*invrho;
   out.p = (C.gamma-1.0)*(U.rhoet - 0.5*invrho*U.rhou*U.rhou);
-  out.M = out.u/sqrt(C.gamma*out.p*invrho);
   return out;
 }
 
 // Compute the area and derivative of area it takes in double x and return double A
 double A_x(double x)
 {
-  if (x < -1.0 || x > 1.0)
-  {
-    return 1.0;
-  }
-  else
-  {
-    return 0.2 + 0.4*(1.0 + sin(M_PI*(x-0.5)));//function that governs Area for nozzle
-  }
+  using namespace std;
+  if (x < xmin || x > xmax) cout << "ERROR: x value is greater then specified domain. Change xmax in header" << endl;
+  
+  if (x < xmin_dom || x > xmax_dom) return 1.0;
+  else return 0.2 + 0.4*(1.0 + sin(M_PI*(x-0.5)));//function that governs Area for nozzle
 }
 double dAdx(double x)
 {
-  if (x < -1.0 || x > 1.0)
-  {
-    return 0.0;
-  }
-  else
-  {
-    return 0.4*M_PI*cos(M_PI*(x-0.5));//derivative of func above
-  }
+  if (x < -1.0 || x > 1.0) return 0.0;
+  else return 0.4*M_PI*cos(M_PI*(x-0.5));//derivative of func above
 }
 
 //compute exact solution
-primvar exactsol(double A_x, constants stagpTAcond)//constants is a datastruct defined in the header
+prim_exact exactsol(double A_x, constants stagpTAcond)//constants is a datastruct defined in the header
 {
   /*************************************************************************************/
   /********************************* Local Definitions *********************************/
   /*************************************************************************************/
   using namespace std;
-  primvar answer;
+  prim_exact answer;
   double A_t = stagpTAcond.A_t;//m^2
   double A_bar = A_x/A_t;//unitless
   double p0 = (stagpTAcond.p0)*1000.0;//kPa->Pa
@@ -73,16 +64,9 @@ primvar exactsol(double A_x, constants stagpTAcond)//constants is a datastruct d
   /*************************************************************************************/
   /**************************** Create the initial guess of Mach ***********************/
   /*************************************************************************************/
-  if (stagpTAcond.cond == true)
-  {
-    M=0.1;
-    //cout << "Minit = " << M << endl;
-  }
-  else
-  {
-    M=5.0;
-    //cout << "Minit = " << M << endl;
-  }
+  if (stagpTAcond.cond == true) M=0.1;
+  else M=5.0;
+
   /*************************************************************************************/
   /******************************* Newton Raphson Loop *********************************/
   /*************************************************************************************/
@@ -106,5 +90,5 @@ primvar exactsol(double A_x, constants stagpTAcond)//constants is a datastruct d
   answer.rho = answer.p/(R * T);
   answer.u = M * sqrt(gam * R * T);
   answer.M = M;
-  return answer;//returns a primvar data struct defined in the header file.
+  return answer;//returns a prim_exact data struct defined in the header file.
 }

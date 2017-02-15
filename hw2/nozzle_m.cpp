@@ -31,12 +31,12 @@ int main()
   consts.nmax = 50000;
   double xarr[N];
   xarr[0] = xmin;
-  for (int i=0; i<N; i++)
+  for (int i=0; i<N-1; i++)
   {
     xarr[i+1]=xarr[i]+consts.dx;
     cout << "xarr [i] = " << xarr[i] << endl;
   } 
-    cout << "xarr [i] = " << xarr[N] << endl;
+    cout << "xarr [i] = " << xarr[N-1] << endl;
 //  isentropicExact(consts);
   return 0;
 }
@@ -44,13 +44,13 @@ int main()
 void isentropicExact(constants consts)
 {
   ofstream dataout; //create an output stream note iomanip lib must be included to change prec
-  dataout.open ("exactsol.txt");// the file to open is data.txt in the dir in which it is run
+  dataout.open ("data/exactsol.txt");// the file to open is data.txt in the dir in which it is run
   /********************************************************************************/
   /************************* Set Constants and D structs **************************/
   /********************************************************************************/
-  double x[N]; //array of x values from -1 to 1 as defined in the problem
+  double x[N]; //array of x values 
   double Aarr[N]; //array of areas that will be passed to the rootfinder funct.
-  primvar prvparr[N]; //Another data struct defined in header.
+  prim_exact prvparr[N]; //Another data struct defined in header.
   /********************************************************************************/
   /***************************** Loop Over N Segments *****************************/
   /********************************************************************************/
@@ -62,7 +62,7 @@ void isentropicExact(constants consts)
     << prvparr[0].u << " "
     << prvparr[0].p/1000 << " "
     << prvparr[0].M << endl;//note the std::fixed, and std::setprecision are needed to output all sigfigs
-  for (int i = 0; i<N+2;i++)
+  for (int i = 0; i<N-1;i++)
   {
     if (i<N/2)
     {
@@ -82,6 +82,6 @@ void isentropicExact(constants consts)
       << prvparr[i+1].p/1000 << " "
       << prvparr[i+1].M <<endl; //write out data
   }
-  cout << "Done see exactsol.txt" << endl;
+  cout << "Done see data/exactsol.txt" << endl;
   dataout.close();
 }

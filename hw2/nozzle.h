@@ -9,19 +9,31 @@
 #define N 300
 #define xmax 1.5
 #define xmin -1.5
+#define xmax_dom 1.0
+#define xmin_dom -1.0
+
 
 /////////////////////////////////////////////////////////////////////////
 ///////////////////////// STRUCTURE DEFINITIONS /////////////////////////
 /////////////////////////////////////////////////////////////////////////
 
-// primvar is a structure that containing structure types double 
-struct primvar
+// prim_exact is a structure that containing structure types double 
+struct prim_exact
 {
   double rho;
   double u;
   double p;
   double M;
 };
+
+struct primvar
+{
+  double rho;
+  double u;
+  double v;
+  double p;
+};
+
 // constants contains doubles and booleans
 struct constants
 {
@@ -39,6 +51,7 @@ struct consvar
 {
   double rho;
   double rhou;
+  double rhov;
   double rhoet;
 };
 
@@ -46,7 +59,7 @@ struct consvar
 ///////////////////////// FUNCTIONS PROTOTYPES //////////////////////////
 /////////////////////////////////////////////////////////////////////////
 primvar constoprim(consvar U, constants C);
-primvar exactsol(double A_x, constants stagpTAcond);
+prim_exact exactsol(double A_x, constants stagpTAcond);
 double A_x(double xcoord);
 double dAdx(double x);
 void isentropicExact(constants consts);
