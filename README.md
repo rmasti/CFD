@@ -6,3 +6,5 @@ Creator: R. Masti
 Date 02/13/2017
 
 Structure details will be added here as the code is developed. 
+NOTE when compiling one must use c++ 11 example:
+[user directory]$ g++ -std=c++11x "all cpp files" -o "executable"

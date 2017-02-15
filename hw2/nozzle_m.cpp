@@ -40,19 +40,17 @@ int main()
   vector<double> Marr_i;
   set_geometry(Aarr, Xarr, dAdxarr, Marr_i);
 
-  initialize(Varr);
-  /*
-  cout << "At cell 2 of N: rho= " << Varr[2].rho <<
-    " u= " << Varr[2].u <<
-    " v= " << Varr[2].v << 
-    " p= " << Varr[2].p << endl;
-  */
-  cout << "x = " << Xarr[90] << " A = " << Aarr[90] 
+  initialize(Varr, Marr_i , consts);
+  cout << "At cell 2 of N: rho= " << Varr[90].rho <<
+    " u= " << Varr[90].u <<
+    " v= " << Varr[90].v << 
+    " p= " << Varr[90].p << endl;
+/*  cout << "x = " << Xarr[90] << " A = " << Aarr[90] 
     << " dAdx = " << dAdxarr[90] << " M = " << Marr_i[N-3] << endl;
+*/
+
 
   isentropicExact(consts);
-
-
   return 0;
 }
 

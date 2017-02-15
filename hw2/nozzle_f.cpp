@@ -16,17 +16,9 @@
 
 using namespace std;
 
-void initialize(vector<primvar> &V)
+void initialize(vector<primvar> &V, vector<double> const &M, constants C)
 {
-  for (int i=0 ; i<N; i++)
-  {
-    primvar temp;
-    temp.rho = 1.0*i;
-    temp.u = 2.0*i;
-    temp.v = 0.0;
-    temp.p = 3.0*i;
-    V.push_back(temp);
-  }
+  for(auto &i : M) V.push_back(Mtoprim(i, C));
 }
 
 /*******************************************************************************/
@@ -104,6 +96,7 @@ primvar Mtoprim(double M, constants C)
   answer.p = ((C.p0*1000)/pow(psi,C.gamma/(C.gamma - 1.0)));//Pa
   answer.rho = answer.p/(R * T);
   answer.u = M * sqrt(C.gamma * R * T);
+  answer.v = 0.0;
   return answer;
 }
 /*******************************************************************************/

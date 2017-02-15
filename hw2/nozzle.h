@@ -68,7 +68,7 @@ double dAdx(double x);
 double M_x(double x);
 
 void isentropicExact(constants C);
-void initialize(std::vector<primvar> &V);
+void initialize(std::vector<primvar> &V, std::vector<double> const &M, constants C);
 void set_geometry(std::vector<double> &Aarr, std::vector<double> &Xarr, 
     std::vector<double> &dAdxarr, std::vector<double> &Marr);
 
