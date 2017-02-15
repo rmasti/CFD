@@ -9,6 +9,8 @@
 #include <iomanip>
 #include <fstream>
 #include <cmath>
+#include <vector>
+
 #include "nozzle.h"
 using namespace std;
 
@@ -27,60 +29,59 @@ int main()
   consts.cond = true;
   consts.tol = 1.0e-8;
   consts.gamma = 1.4;
-  consts.dx = (xmax-xmin)/N;
+  double dx = (xmax-xmin)/N;
   consts.nmax = 50000;
-  double xarr[N];
-  xarr[0] = xmin;
-  for (int i=0; i<N-1; i++)
-  {
-    xarr[i+1]=xarr[i]+consts.dx;
-    cout << "xarr [i] = " << xarr[i] << endl;
-  } 
-    cout << "xarr [i] = " << xarr[N-1] << endl;
-//  isentropicExact(consts);
+
+
+  vector<primvar> Varr;
+  vector<double> Aarr;
+  vector<double> Xarr;
+  vector<double> dAdxarr;
+  vector<double> Marr_i;
+  set_geometry(Aarr, Xarr, dAdxarr, Marr_i);
+
+  initialize(Varr);
+  /*
+  cout << "At cell 2 of N: rho= " << Varr[2].rho <<
+    " u= " << Varr[2].u <<
+    " v= " << Varr[2].v << 
+    " p= " << Varr[2].p << endl;
+  */
+  cout << "x = " << Xarr[90] << " A = " << Aarr[90] 
+    << " dAdx = " << dAdxarr[90] << " M = " << Marr_i[N-3] << endl;
+
+  isentropicExact(consts);
+
+
   return 0;
 }
 
-void isentropicExact(constants consts)
+void isentropicExact(constants C)
 {
+  /************************* Set Constants and D structs **************************/
+  double x[N+1]; //array of x values 
+  double Aarr[N+1]; //array of areas that will be passed to the rootfinder funct.
+  prim_exact prvparr[N+1]; //Another data struct defined in header.
+
   ofstream dataout; //create an output stream note iomanip lib must be included to change prec
   dataout.open ("data/exactsol.txt");// the file to open is data.txt in the dir in which it is run
-  /********************************************************************************/
-  /************************* Set Constants and D structs **************************/
-  /********************************************************************************/
-  double x[N]; //array of x values 
-  double Aarr[N]; //array of areas that will be passed to the rootfinder funct.
-  prim_exact prvparr[N]; //Another data struct defined in header.
-  /********************************************************************************/
-  /***************************** Loop Over N Segments *****************************/
-  /********************************************************************************/
-  x[0]=-1.0; Aarr[0]=A_x(x[0]); prvparr[0] = exactsol(Aarr[0],consts);
   dataout  << "x (m) "<< " rho (kg)" << " u (m/s)" << " p (kPa)" << " M " <<endl;
-  dataout << std::fixed << std::setprecision(14)
-    << x[0] << " "
-    << prvparr[0].rho << " "
-    << prvparr[0].u << " "
-    << prvparr[0].p/1000 << " "
-    << prvparr[0].M << endl;//note the std::fixed, and std::setprecision are needed to output all sigfigs
-  for (int i = 0; i<N-1;i++)
+
+
+  /***************************** Loop Over N Segments *****************************/
+  for (int i = 0; i<N+1;i++)
   {
-    if (i<N/2)
-    {
-      consts.cond = true; //use a subsonic initial M guess
-    }
-    else
-    {
-      consts.cond = false; //use a supersonic initial M guess
-    }
-    x[i+1] = x[i] + 2.0/(N-1.0); //Evenly spaced x values
-    Aarr[i+1] = A_x(x[i+1]); //The area is defined in hw1_f.cpp
-    prvparr[i+1] = exactsol(Aarr[i+1],consts); //pass the datastruct and Area val to return all primary variables.
+    if (i<N/2) C.cond = true; //use a subsonic initial M guess
+    else C.cond = false; //use a supersonic initial M guess
+    x[i] = xmin + i*(xmax-xmin)/(N); //Evenly spaced x values
+    Aarr[i] = A_x(x[i]); //The area is defined in hw1_f.cpp
+    prvparr[i] = exactsol(Aarr[i],C); //pass the datastruct and Area val to return all primary variables.
     dataout << std::fixed << std::setprecision(14)
-      << x[i+1] << " "
-      << prvparr[i+1].rho << " "
-      << prvparr[i+1].u << " "
-      << prvparr[i+1].p/1000 << " "
-      << prvparr[i+1].M <<endl; //write out data
+      << x[i] << " "
+      << prvparr[i].rho << " "
+      << prvparr[i].u << " "
+      << prvparr[i].p/1000 << " "
+      << prvparr[i].M <<endl; //write out data
   }
   cout << "Done see data/exactsol.txt" << endl;
   dataout.close();

@@ -59,9 +59,17 @@ struct consvar
 ///////////////////////// FUNCTIONS PROTOTYPES //////////////////////////
 /////////////////////////////////////////////////////////////////////////
 primvar constoprim(consvar U, constants C);
-prim_exact exactsol(double A_x, constants stagpTAcond);
+consvar primtocons(primvar V, constants C);
+prim_exact exactsol(double A_x, constants C);
+primvar Mtoprim(double M, constants C);
+
 double A_x(double xcoord);
 double dAdx(double x);
-void isentropicExact(constants consts);
+double M_x(double x);
+
+void isentropicExact(constants C);
+void initialize(std::vector<primvar> &V);
+void set_geometry(std::vector<double> &Aarr, std::vector<double> &Xarr, 
+    std::vector<double> &dAdxarr, std::vector<double> &Marr);
 
 #endif
