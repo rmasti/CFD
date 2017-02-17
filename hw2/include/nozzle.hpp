@@ -66,10 +66,13 @@ double A_x(double xcoord);
 double dAdx(double x);
 double M_x(double x);
 
+void isentropic(constants C);
 void isentropicExact(constants C);
-void initialize(std::vector<primvar> &V, std::vector<double> const &M, constants C);
+void initialize(std::vector<primvar> &V, std::vector<double> const &M, 
+    std::vector<consvar> &U, constants C);
 void set_geometry(std::vector<double> &Aarr, std::vector<double> &Xarr, 
     std::vector<double> &dAdxarr, std::vector<double> &Marr);
 void output_file_headers();
-
+void write_out(FILE* &fp2, std::vector<double> const &Aarr, std::vector<double> const &Xarr,
+        std::vector<primvar> const &V, std::vector<double> const &M, std::vector<consvar> const &U);
 #endif

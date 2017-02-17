@@ -38,26 +38,35 @@ int main()
 
   output_file_headers();
 
+  isentropicExact(consts);
+  isentropic(consts);
+  fclose(fp1);
+  cout << "Done see data directory" << endl;
+  return 0;
+}
+
+void isentropic(constants C)
+{
   vector<primvar> Varr;
+  vector<consvar> Uarr;
   vector<double> Aarr;
   vector<double> Xarr;
   vector<double> dAdxarr;
   vector<double> Marr_i;
+
+  //These two functions fill in the vectors that were defined above for both double vectors and also primvar struct defined in the header file
   set_geometry(Aarr, Xarr, dAdxarr, Marr_i);
+  initialize(Varr, Marr_i , Uarr, C);
 
-  initialize(Varr, Marr_i , consts);
-  cout << "At cell 2 of N: rho= " << Varr[90].rho <<
-    " u= " << Varr[90].u <<
-    " v= " << Varr[90].v << 
-    " p= " << Varr[90].p << endl;
-/*  cout << "x = " << Xarr[90] << " A = " << Aarr[90] 
-    << " dAdx = " << dAdxarr[90] << " M = " << Marr_i[N-3] << endl;
-*/
+  cout << "Uarr " << Uarr[87].rhou << endl;
+  //fprintf(fp2, "variables=\"x(m)\"\"Area(m^2)\"\"rho(kg/m^3)\"\"u(m/s)\"\"Press(kPa)\"\"Mach\"\"U1\"\"U2\"\"U3\"\n");
+  write_out(fp2, Aarr, Xarr, Varr, Marr_i, Uarr);
+  //At this point Varr, Xarr, Aarr, dAdxarr, Marr_i have all been filled with initial values. These now need to be 
+  //Now Create the conservative var U from V 
 
 
-  isentropicExact(consts);
-  return 0;
 }
+
 
 void isentropicExact(constants C)
 {
@@ -76,10 +85,7 @@ void isentropicExact(constants C)
     prvparr[i] = exactsol(Aarr[i],C); //pass the datastruct and Area val to return all primary variables
     fprintf(fp1, "%f %e %e %e %f\n", x[i], prvparr[i].rho, prvparr[i].u, prvparr[i].p/1000.0, prvparr[i].M);
   }
-  cout << "Done see data/exactsol.txt" << endl;
-  fclose(fp1);
 }
-
 
 /****************************** FILE HANDLING **********************************/
 void output_file_headers()

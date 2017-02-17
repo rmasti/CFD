@@ -15,12 +15,28 @@
 #include "nozzle.hpp" //structure templates and func prototypes
 
 using namespace std;
-
-
-void initialize(vector<primvar> &V, vector<double> const &M, constants C)
+/********************************* WRITE OUT ********************************/
+void write_out(FILE* & file, vector<double> const &Aarr, vector<double> const &Xarr, 
+    vector<primvar> const &V, vector<double> const &M, vector<consvar> const &U)
 {
-  for(auto &i : M) V.push_back(Mtoprim(i, C));
+  for(int i = 0; i < M.size() ; i++) 
+  {
+    fprintf(file, "%e %e %e %e %e %e %e %e %e\n",Xarr[i], Aarr[i], V[i].rho, 
+        V[i].u, V[i].p/1000, M[i], U[i].rho, U[i].rhou, U[i].rhoet);
+  } 
 }
+/*****************************************************************************/
+
+/********************************* INITIALIZE ********************************/
+void initialize(vector<primvar> &V, vector<double> const &M, vector<consvar> &U, constants C)
+{
+  for(int i = 0; i < M.size(); i++) 
+  { 
+    V.push_back(Mtoprim(M[i], C));
+    U.push_back(primtocons(V[i], C));
+  }
+}
+/*******************************************************************************/
 
 /*******************************************************************************/
 /********************************* SET GEOMETRY ********************************/
