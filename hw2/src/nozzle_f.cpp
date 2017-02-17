@@ -12,9 +12,10 @@
 #include <iomanip>
 #include <vector>
 
-#include "nozzle.h" //structure templates and func prototypes
+#include "nozzle.hpp" //structure templates and func prototypes
 
 using namespace std;
+
 
 void initialize(vector<primvar> &V, vector<double> const &M, constants C)
 {

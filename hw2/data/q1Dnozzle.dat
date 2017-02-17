@@ -1,0 +1,2 @@
+TITLE = "Quasi-1D Nozzle Solution"
+variables="x(m)""Area(m^2)""rho(kg/m^3)""u(m/s)""p(kPa)""M()""U1""U2()""U3()"

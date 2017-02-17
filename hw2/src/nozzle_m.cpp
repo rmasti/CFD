@@ -11,7 +11,11 @@
 #include <cmath>
 #include <vector>
 
-#include "nozzle.h"
+#include "nozzle.hpp"
+FILE *fp1;
+FILE *fp2;
+
+
 using namespace std;
 
 int main()
@@ -32,6 +36,7 @@ int main()
   double dx = (xmax-xmin)/N;
   consts.nmax = 50000;
 
+  output_file_headers();
 
   vector<primvar> Varr;
   vector<double> Aarr;
@@ -61,11 +66,6 @@ void isentropicExact(constants C)
   double Aarr[N+1]; //array of areas that will be passed to the rootfinder funct.
   prim_exact prvparr[N+1]; //Another data struct defined in header.
 
-  ofstream dataout; //create an output stream note iomanip lib must be included to change prec
-  dataout.open ("data/exactsol.txt");// the file to open is data.txt in the dir in which it is run
-  dataout  << "x (m) "<< " rho (kg)" << " u (m/s)" << " p (kPa)" << " M " <<endl;
-
-
   /***************************** Loop Over N Segments *****************************/
   for (int i = 0; i<N+1;i++)
   {
@@ -73,14 +73,24 @@ void isentropicExact(constants C)
     else C.cond = false; //use a supersonic initial M guess
     x[i] = xmin + i*(xmax-xmin)/(N); //Evenly spaced x values
     Aarr[i] = A_x(x[i]); //The area is defined in hw1_f.cpp
-    prvparr[i] = exactsol(Aarr[i],C); //pass the datastruct and Area val to return all primary variables.
-    dataout << std::fixed << std::setprecision(14)
-      << x[i] << " "
-      << prvparr[i].rho << " "
-      << prvparr[i].u << " "
-      << prvparr[i].p/1000 << " "
-      << prvparr[i].M <<endl; //write out data
+    prvparr[i] = exactsol(Aarr[i],C); //pass the datastruct and Area val to return all primary variables
+    fprintf(fp1, "%f %e %e %e %f\n", x[i], prvparr[i].rho, prvparr[i].u, prvparr[i].p/1000.0, prvparr[i].M);
   }
   cout << "Done see data/exactsol.txt" << endl;
-  dataout.close();
+  fclose(fp1);
 }
+
+
+/****************************** FILE HANDLING **********************************/
+void output_file_headers()
+{
+  fp1 = fopen("data/exactsol.dat", "w");
+  fprintf(fp1, "TITLE = \"Isentropic Exact Solution\"\n");
+  fprintf(fp1, "variables=\"x(m)\"\"rho(kg/m^3)\"\"u(m/s)\"\"p(kPa)\"\"M()\"\n");
+
+  fp2 = fopen("data/q1Dnozzle.dat","w");
+  fprintf(fp2, "TITLE = \"Quasi-1D Nozzle Solution\"\n");
+  fprintf(fp2, "variables=\"x(m)\"\"Area(m^2)\"\"rho(kg/m^3)\"\"u(m/s)\"\"Press(kPa)\"\"Mach\"\"U1\"\"U2\"\"U3\"\n");
+}
+/***************************** END FILE HANDLING *******************************/
+
