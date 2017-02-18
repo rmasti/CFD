@@ -11,6 +11,11 @@
 #define xmin -1.5
 #define xmax_dom 1.0
 #define xmin_dom -1.0
+#define num_ghost_cells 1
+#define R 287.0
+#define kappa4 (1.0/32.0)
+#define kappa2 (1.0/4.0)
+#define cfl 0.1
 
 /////////////////////////////////////////////////////////////////////////
 ///////////////////////// STRUCTURE DEFINITIONS /////////////////////////
@@ -44,6 +49,8 @@ struct constants
   double gamma;
   double dx;
   double nmax;
+  bool outflow;
+  double pb; //back pressure
 };
 // create consvar structure uses type double
 struct consvar
@@ -52,6 +59,12 @@ struct consvar
   double rhou;
   double rhov;
   double rhoet;
+};
+struct fluxes
+{
+  double rhou;
+  double rhouu_and_p;
+  double rhouht;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -68,11 +81,19 @@ double M_x(double x);
 
 void isentropic(constants C);
 void isentropicExact(constants C);
-void initialize(std::vector<primvar> &V, std::vector<double> const &M, 
+void initialize(std::vector<primvar> &V, std::vector<double> &M, 
     std::vector<consvar> &U, constants C);
 void set_geometry(std::vector<double> &Aarr, std::vector<double> &Xarr, 
     std::vector<double> &dAdxarr, std::vector<double> &Marr);
 void output_file_headers();
-void write_out(FILE* &fp2, std::vector<double> const &Aarr, std::vector<double> const &Xarr,
-        std::vector<primvar> const &V, std::vector<double> const &M, std::vector<consvar> const &U);
+void write_out(FILE* &fp2, std::vector<double> const &Aarr, std::vector<double> const &Xarr, std::vector<primvar> const &V, std::vector<double> const &M, std::vector<consvar> const &U);
+
+void set_boundary_cond(std::vector<double> &M, std::vector<primvar> &V, std::vector<consvar> &U, constants C);
+
+void compute_fluxes(std::vector<fluxes> &F, std::vector<consvar> const &U, std::vector<primvar> const &V, constants C);
+
+void reconstruct_U(std::vector<consvar> &U_avg, std::vector<consvar> const &U);
+
+void fluxcalc(fluxes &F, consvar const &U, constants C);
+
 #endif

@@ -14,7 +14,7 @@
 #include "nozzle.hpp"
 FILE *fp1;
 FILE *fp2;
-
+FILE *fp3;
 
 using namespace std;
 
@@ -35,6 +35,7 @@ int main()
   consts.gamma = 1.4;
   double dx = (xmax-xmin)/N;
   consts.nmax = 50000;
+  consts.outflow = true;
 
   output_file_headers();
 
@@ -58,13 +59,23 @@ void isentropic(constants C)
   set_geometry(Aarr, Xarr, dAdxarr, Marr_i);
   initialize(Varr, Marr_i , Uarr, C);
 
-  cout << "Uarr " << Uarr[87].rhou << endl;
-  //fprintf(fp2, "variables=\"x(m)\"\"Area(m^2)\"\"rho(kg/m^3)\"\"u(m/s)\"\"Press(kPa)\"\"Mach\"\"U1\"\"U2\"\"U3\"\n");
+  set_boundary_cond(Marr_i, Varr, Uarr, C);
+
   write_out(fp2, Aarr, Xarr, Varr, Marr_i, Uarr);
-  //At this point Varr, Xarr, Aarr, dAdxarr, Marr_i have all been filled with initial values. These now need to be 
-  //Now Create the conservative var U from V 
 
-
+  vector<primvar> Vold=Varr;
+  vector<consvar> Uold=Uarr;
+  vector<double> Res;
+  Res.push_back(10.0); //rho
+  Res.push_back(10.0);//rhou
+  Res.push_back(10.0);//rhoet
+  
+  vector<fluxes> Farr;//defined on the cell faces
+  compute_fluxes(Farr, Uarr, Varr, C);
+ /* for (int n = 0; n < C.nmax; n++)
+  {
+  
+  }*/
 }
 
 
@@ -97,6 +108,10 @@ void output_file_headers()
   fp2 = fopen("data/q1Dnozzle.dat","w");
   fprintf(fp2, "TITLE = \"Quasi-1D Nozzle Solution\"\n");
   fprintf(fp2, "variables=\"x(m)\"\"Area(m^2)\"\"rho(kg/m^3)\"\"u(m/s)\"\"Press(kPa)\"\"Mach\"\"U1\"\"U2\"\"U3\"\n");
+
+  fp3 = fopen("data/q1history.dat","w");
+  fprintf(fp3, "TITLE = \"Quasi-1D Residual History\"\n");
+  fprintf(fp1,"variables=\"Iteration\"\"Time(s)\"\"Res1\"\"Res2\"\"Res3\"\n");
 }
 /***************************** END FILE HANDLING *******************************/
 

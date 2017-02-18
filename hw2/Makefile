@@ -39,7 +39,7 @@ main:$(OBJS)
 	rm -r $(OBJS)
 
 tests:$(TESTS)
-	$(LD)  $(LDFLAGS) -o pleasework $(TESTS) $(LIBS)
+	$(LD)  $(LDFLAGS) -o tests $(TESTS) $(LIBS)
 	rm -r $(TESTS)
 
 
