@@ -33,13 +33,11 @@ int main()
   consts.cond = true;
   consts.tol = 1.0e-8;
   consts.gamma = 1.4;
-  double dx = (xmax-xmin)/N;
-  consts.nmax = 50000;
   consts.outflow = true;
 
   output_file_headers();
 
-  isentropicExact(consts);
+  isentropic_exact(consts);
   isentropic(consts);
   fclose(fp1);
   cout << "Done see data directory" << endl;
@@ -51,20 +49,22 @@ void isentropic(constants C)
   vector<primvar> Varr;
   vector<consvar> Uarr;
   vector<double> Aarr;
+  vector<double> XCarr;
+  vector<double> Marr;
   vector<double> Xarr;
-  vector<double> dAdxarr;
-  vector<double> Marr_i;
 
   //These two functions fill in the vectors that were defined above for both double vectors and also primvar struct defined in the header file
-  set_geometry(Aarr, Xarr, dAdxarr, Marr_i);
-  initialize(Varr, Marr_i , Uarr, C);
+  set_geometry(Xarr, Aarr, XCarr, Marr);
 
-  set_boundary_cond(Marr_i, Varr, Uarr, C);
+  initialize(Varr, Marr , Uarr, C);
 
-  write_out(fp2, Aarr, Xarr, Varr, Marr_i, Uarr);
+  set_boundary_cond(Marr, Varr, Uarr, C);
+
+  write_out(fp2, Aarr, XCarr, Varr, Marr, Uarr);
 
   vector<primvar> Vold=Varr;
   vector<consvar> Uold=Uarr;
+
   vector<double> Res;
   Res.push_back(10.0); //rho
   Res.push_back(10.0);//rhou
@@ -72,14 +72,31 @@ void isentropic(constants C)
   
   vector<fluxes> Farr;//defined on the cell faces
   compute_fluxes(Farr, Uarr, Varr, C);
- /* for (int n = 0; n < C.nmax; n++)
+  //cout << " Flux size: " << Farr.size() << endl;
+  iteration_step(Farr, Uold, Uarr, Vold, Varr, XCarr, Xarr, Marr, C);
+  //cout << "x at i = 0: " << XCarr[Xarr.size()-1] << endl;
+  //cout <<"x at i = 0: " << XCarr.front() << endl;
+  for (int n=0; n < 4; n++)
   {
-  
-  }*/
+    vector<fluxes> Farr;//defined on the cell faces
+
+    compute_fluxes(Farr, Uarr, Varr, C);
+    cout << " Flux size: " << Farr.size() << endl;
+    iteration_step(Farr, Uold, Uarr, Vold, Varr, XCarr, Xarr, Marr, C); 
+    //compute_residuals(Res, Uold, Uarr, C); 
+    if (n % 5 == 0)
+    {
+      write_out(fp2, Aarr, XCarr, Varr, Marr, Uarr);
+    }
+    set_boundary_cond(Marr, Varr, Uarr, C);
+
+    Uold = Uarr;
+    Vold = Varr;
+  }
 }
 
 
-void isentropicExact(constants C)
+void isentropic_exact(constants C)
 {
   /************************* Set Constants and D structs **************************/
   double x[N+1]; //array of x values 

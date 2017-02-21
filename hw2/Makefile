@@ -32,14 +32,14 @@ OBJS    = \
 
 TESTS = \
 	src/nozzle_f.o\
-	test/example.o
+	test/tests.o
 
 main:$(OBJS) 
 	$(LD)  $(LDFLAGS) -o main $(OBJS) $(LIBS)
 	rm -r $(OBJS)
 
 tests:$(TESTS)
-	$(LD)  $(LDFLAGS) -o tests $(TESTS) $(LIBS)
+	$(LD)  $(LDFLAGS) -o main_t $(TESTS) $(LIBS)
 	rm -r $(TESTS)
 
 
