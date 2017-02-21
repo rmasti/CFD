@@ -65,30 +65,53 @@ void isentropic(constants C)
   vector<primvar> Vold=Varr;
   vector<consvar> Uold=Uarr;
 
-  vector<double> Res;
-  Res.push_back(10.0); //rho
-  Res.push_back(10.0);//rhou
-  Res.push_back(10.0);//rhoet
-  
+  vector<double> Res(3,10.0);
+  vector<double> L2norm(3, 10.0);
+  vector<double> Linfnorm(3, 10.0);
+  vector<double> L1norm(3, 10.0);
+ 
+  vector<consvar> Resarr(XCarr.size());
+
   vector<fluxes> Farr;//defined on the cell faces
   compute_fluxes(Farr, Uarr, Varr, C);
-  //cout << " Flux size: " << Farr.size() << endl;
-  iteration_step(Farr, Uold, Uarr, Vold, Varr, XCarr, Xarr, Marr, C);
-  //cout << "x at i = 0: " << XCarr[Xarr.size()-1] << endl;
-  //cout <<"x at i = 0: " << XCarr.front() << endl;
-  for (int n=0; n < 4; n++)
+  iteration_step(Farr, Uold, Uarr, Vold, Varr, XCarr, Xarr, Marr, Resarr, C);
+ 
+  vector<double> Resold(3, 10.0);
+
+  for (int n=0; n < 100; n++)
   {
     vector<fluxes> Farr;//defined on the cell faces
+    compute_fluxes(Farr, Uold, Vold, C);
+    iteration_step(Farr, Uold, Uarr, Vold, Varr, XCarr, Xarr, Marr, Resarr, C); 
+    compute_residuals(Resarr, Res, Linfnorm, L1norm, L2norm, Uold, Uarr); 
+    if (n % 5 == 0) write_out(fp2, Aarr, XCarr, Varr, Marr, Uarr);
 
-    compute_fluxes(Farr, Uarr, Varr, C);
-    cout << " Flux size: " << Farr.size() << endl;
-    iteration_step(Farr, Uold, Uarr, Vold, Varr, XCarr, Xarr, Marr, C); 
-    //compute_residuals(Res, Uold, Uarr, C); 
-    if (n % 5 == 0)
+    if (n==3)
     {
-      write_out(fp2, Aarr, XCarr, Varr, Marr, Uarr);
+      Resold[0] = Res[0];
+      Resold[1] = Res[1];
+      Resold[2] = Res[2];
     }
+
+    if (Res[0]/Resold[0] < C.tol || Res[1]/Resold[1] < C.tol || Res[1]/Resold[1] < C.tol)
+    {
+      cout << "SOLUTION REACHED" << endl;
+      break;
+    }
+/*
+    if (Uold[92].rhou < 0)
+    {
+      break;
+    }
+*/
+    //cout << "res 0 " << Res[0] << endl;
+
     set_boundary_cond(Marr, Varr, Uarr, C);
+
+    
+    cout.precision(14);
+    //cout << " Farr: rhou = " << Farr[93].rhou << " rhouuandp = "<< Farr[93].rhouu_and_p << 
+     // " rhouht = " << Farr[93].rhouht << endl;
 
     Uold = Uarr;
     Vold = Varr;

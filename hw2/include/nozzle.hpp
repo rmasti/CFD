@@ -6,7 +6,7 @@
  */
 #ifndef nozzle_H_
 #define nozzle_H_
-#define N 300
+#define N 149
 #define xmax 1.5
 #define xmin -1.5
 #define xmax_dom 1.0
@@ -100,12 +100,15 @@ void reconstruct_U(std::vector<consvar> &U_avg, std::vector<consvar> const &U);
 
 void fluxcalc(fluxes &F, consvar const &U, constants C);
 
-void iteration_step(std::vector<fluxes> &F, std::vector<consvar> &Uold, std::vector<consvar> &Unew, std::vector<primvar> &Vold, std::vector<primvar> &Vnew, std::vector<double> const &XCarr, std::vector<double> const &Xarr, std::vector<double> Marr, constants C);
+void iteration_step(std::vector<fluxes> &F, std::vector<consvar> &Uold, std::vector<consvar> &Unew, std::vector<primvar> &Vold, std::vector<primvar> &Vnew, std::vector<double> const &XCarr, std::vector<double> const &Xarr, std::vector<double> &Marr, std::vector<consvar> &Resarr, constants C);
 
 double compute_timestep(std::vector<primvar> const &Vold, int i, constants C);
 
 double compute_volume(std::vector<double> const &Xarr, int i, std::vector<double> &ALR);
 
 double primtoM(primvar V, constants C);
+
+void compute_residuals(std::vector<consvar> &Resarr, std::vector<double> &Res, std::vector<double> &Linfnorm, std::vector<double> &L1norm, std::vector<double> &L2norm, std::vector<consvar> const &Uold, std::vector<consvar> const &Unew);
+
 #endif
 

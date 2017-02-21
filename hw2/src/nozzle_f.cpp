@@ -17,13 +17,47 @@
 using namespace std;
 
 /****************************** RESIDUALS ***********************************/
+void compute_residuals(vector<consvar> &Resarr, vector<double> &Res, vector<double> &Linfnorm, vector<double> &L1norm, vector<double> &L2norm, vector<consvar> const &Uold, vector<consvar> const &Unew)
+{
+  vector<double> sumresidual(3,0.0);
+  vector<double> sumsqrresidual(3,0.0);
 
+  for (int i=0; i<Uold.size()-1; i++)
+  {
+    sumresidual[0] += Resarr[i].rho;
+    sumresidual[1] += Resarr[i].rhou;
+    sumresidual[2] += Resarr[i].rhoet;
+
+    sumsqrresidual[0] += Resarr[i].rho*Resarr[i].rho;
+    sumsqrresidual[1] += Resarr[i].rhou*Resarr[i].rhou;
+    sumsqrresidual[2] += Resarr[i].rhoet*Resarr[i].rhoet;
+
+    if (Linfnorm[0] > Resarr[i].rho) Linfnorm[0] = Resarr[i].rho;
+    if (Linfnorm[1] > Resarr[i].rhou) Linfnorm[1] = Resarr[i].rhou;
+    if (Linfnorm[2] > Resarr[i].rhoet) Linfnorm[2] = Resarr[i].rhoet;
+
+  }
+
+  double invN = 1.0/Uold.size();
+  L1norm[0] = sumresidual[0]*invN;
+  L1norm[1] = sumresidual[1]*invN;
+  L1norm[2] = sumresidual[2]*invN;
+
+  L2norm[0] = sqrt(sumsqrresidual[0]*invN);
+  L2norm[1] = sqrt(sumsqrresidual[1]*invN);
+  L2norm[2] = sqrt(sumsqrresidual[2]*invN);
+
+  Res[0] = L2norm[0];
+  Res[1] = L2norm[1];
+  Res[2] = L2norm[2];
+  
+}
 
 
 
 /**************************** ITERATION STEP ********************************/
 
-void iteration_step(vector<fluxes> &F, vector<consvar> &Uold, vector<consvar> &Unew, vector<primvar> &Vold, vector<primvar> &Vnew, vector<double> const &XCarr, vector<double> const &Xarr, vector<double> Marr,constants C) 
+void iteration_step(vector<fluxes> &F, vector<consvar> &Uold, vector<consvar> &Unew, vector<primvar> &Vold, vector<primvar> &Vnew, vector<double> const &XCarr, vector<double> const &Xarr, vector<double> &Marr,vector<consvar> &Resarr, constants C) 
 {
 
   vector<double> dtvec;
@@ -60,6 +94,11 @@ void iteration_step(vector<fluxes> &F, vector<consvar> &Uold, vector<consvar> &U
 
     Vnew[i] = constoprim(Unew[i], C);
     Marr[i] = primtoM(Vnew[i], C);
+    Resarr[i].rho = dt*inv_volume*abs(Unew[i].rho - Uold[i].rho);
+    Resarr[i].rhou = dt*inv_volume*abs(Unew[i].rhou - Uold[i].rhou);
+    Resarr[i].rhoet = dt*inv_volume*abs(Unew[i].rhoet - Uold[i].rhoet);
+
+  //  cout << "residual " << Unew[i].rho << endl;
   }
 }
 
@@ -103,6 +142,11 @@ void compute_fluxes(vector<fluxes> &F, vector<consvar> const &U, vector<primvar>
     nu[3] = abs((P[5] - 2.0*P[4] - P[3])/(P[5] + 2.0*P[4] + P[3]));
     double numax = max(nu[0], nu[1]);
     numax = max(numax, nu[2]); numax = max(numax, nu[3]);
+    //cout << " nu = " << nu[0] << " " <<  nu[1] << " "<< nu[2] << " " << nu[3] <<  endl;
+    //cout << " P = " << P[0] << " " <<  P[1] << " "<< P[2] << " " << P[3] <<  " " << P[4] << " " << P[5] <<endl;
+    //
+    //cout << " V = " << V[i-2].p << " " <<  V[i-1].p << " "<< V[i].p << " " << V[i+1].p <<  " " << V[i+2].p << " " << V[i+3].p <<endl;
+    //cout << " x = " << xmin+dx*i << endl;
     double epsilon2 = kappa2*numax;
     double epsilon4 = max(0.0, (kappa4-epsilon2));
     double lambda1 = abs(V[i].u) + sqrt(C.gamma * V[i].p / V[i].rho);
@@ -276,6 +320,7 @@ void set_geometry(vector<double> &Xarr, vector<double> &Aarr, vector<double> &XC
     XCarr.push_back(xC);
     Aarr.push_back(A_x(xC));
     Marr.push_back(M_x(xC));
+    //cout << "center val = " << xC << " X val = " << xmin+(dx)*(i+1) << endl;
   }
 }
 // Compute the area and derivative of area it takes in double x and return double A. It also computes initial mach number guess.
@@ -291,7 +336,7 @@ double dAdx(double x)
 }
 double M_x(double x)
 {
-  double slope = (2.0 - 0.1)/(xmax_dom - xmin_dom);
+  double slope = (1.9 - 0.1)/(xmax_dom - xmin_dom);
   double b = 0.1-slope*xmin_dom;
   if (x < xmin_dom) return slope*xmin_dom+b;
   if (x > xmax_dom ) return slope*xmax_dom+b;
@@ -319,18 +364,18 @@ consvar primtocons(primvar V, constants C)
   out.rho = V.rho;
   out.rhou = V.rho*V.u;
   out.rhov = V.rho*V.v;
-  out.rhoet = (V.p/(C.gamma-1.0)) + 0.5*V.rho*(V.u*V.u + V.v*V.v);
+  out.rhoet = (V.p/(C.gamma-1.0)) + 0.5*V.rho*(V.u*V.u );
   return out;
 }
 //This function converts mach number into the primitive variables
 primvar Mtoprim(double M, constants C)
 {
   primvar answer;
-  double psi = 1.0 + ((C.gamma - 1.0)/2.0) * M*M;//unitless
+  double psi = 1.0 + 0.5*(C.gamma - 1.0) * M*M;//unitless
   double T = C.T0/psi;// K
-  answer.p = ((C.p0*1000)/pow(psi,C.gamma/(C.gamma - 1.0)));//Pa
+  answer.p = ((C.p0*1000)*pow(psi,(C.gamma - 1.0)/C.gamma));//Pa
   answer.rho = answer.p/(R * T);
-  answer.u = M * sqrt(C.gamma * R * T);
+  answer.u = M * sqrt(C.gamma * answer.p / answer.rho);
   answer.v = 0.0;
   return answer;
 }
