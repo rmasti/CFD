@@ -69,15 +69,14 @@ void iteration_step(vector<fluxes> &F, vector<consvar> &Uold, vector<consvar> &U
     if (dtmin > dttemp) dtmin = dttemp;
   }
   
-  for(int i=0; i<XCarr.size(); i++)
+  for(int i=0; i<Xarr.size()-1; i++)
   {
     double dt;
     // Compute time step for the sell i;
     if (localdt==true) dt = dtvec[i];
     else dt = dtmin;
     // Now that you have the time step create a function that computes the volume
-    
-    vector<double> ALR(2,0.0);
+    vector<double> ALR;
     double volume = compute_volume(Xarr,i, ALR);
     double S = Vold[i].p*dAdx(XCarr[i]);
     double inv_volume = 1.0/volume;
@@ -107,13 +106,11 @@ double compute_volume(vector<double> const &Xarr, int i, vector<double> &ALR)
 {
   double xleft = Xarr[i];
   double xright = Xarr[i+1];
-
   double Aleft = A_x(xleft);
   double Aright = A_x(xright);
   double Aavg = 0.5*(Aleft+Aright);
   ALR.push_back(Aleft);
   ALR.push_back(Aright);
-
   return abs(xright-xleft)*Aavg;
 }
 
@@ -124,34 +121,41 @@ double compute_timestep(vector<primvar> const &Vold, int i, constants C)
 }
 
 /********************************* FLUXES ***********************************/
-
-
-
-void compute_fluxes(vector<fluxes> &F, vector<consvar> const &U, vector<primvar> const &V, constants C) 
+void compute_fluxes(vector<fluxes> &F, vector<consvar> const &U, vector<primvar> const &V, constants C)  
 {
   vector<consvar> U_avg; //vector of cons var on all the faces
   reconstruct_U(U_avg, U);
   //Now that we have the face avgd values of U we can compute F and also include some artificial disipation terms to the flux
 
   //nu and P are used for evaluating at values near i (i-2->i+2)...
+  vector<double> nu = {0.0, 0.0, 0.0, 0.0};
   vector<double> P = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  double epsilon2;
-  double epsilon4;
   vector<fluxes> dvec;
   //Loop over the middle points minus the first and last two so this takes us to 297 because there are 301 faces 
   for(int i=2; i < N-1; i++)
   {
     P[0] = V[i-2].p; P[1] = V[i-1].p; P[2] = V[i].p; 
     P[3] = V[i+1].p; P[4] = V[i+2].p; P[5] = V[i+3].p;
-    artificial_viscosity(P, epsilon2, epsilon4);
-
+    nu[0] = abs((P[2] - 2.0*P[1] - P[0])/(P[2] + 2.0*P[1] + P[0]));
+    nu[1] = abs((P[3] - 2.0*P[2] - P[1])/(P[3] + 2.0*P[2] + P[1]));
+    nu[2] = abs((P[4] - 2.0*P[3] - P[2])/(P[4] + 2.0*P[3] + P[2]));
+    nu[3] = abs((P[5] - 2.0*P[4] - P[3])/(P[5] + 2.0*P[4] + P[3]));
+    double numax = max(nu[0], nu[1]);
+    numax = max(numax, nu[2]); numax = max(numax, nu[3]);
+    //cout << " nu = " << nu[0] << " " <<  nu[1] << " "<< nu[2] << " " << nu[3] <<  endl;
+    //cout << " P = " << P[0] << " " <<  P[1] << " "<< P[2] << " " << P[3] <<  " " << P[4] << " " << P[5] <<endl;
+    //
+    //cout << " V = " << V[i-2].p << " " <<  V[i-1].p << " "<< V[i].p << " " << V[i+1].p <<  " " << V[i+2].p << " " << V[i+3].p <<endl;
+    //cout << " x = " << xmin+dx*i << endl;
+    double epsilon2 = kappa2*numax;
+    double epsilon4 = max(0.0, (kappa4-epsilon2));
     double lambda1 = abs(V[i].u) + sqrt(C.gamma * V[i].p / V[i].rho);
     double lambda2 = abs(V[i+1].u) + sqrt(C.gamma * V[i+1].p / V[i+1].rho);
     double lambda = 0.5*(lambda1 + lambda2);
-
     fluxes d;
-    compute_dflux( d, epsilon2, epsilon4, lambda, i, U);
-
+    d.rhou = lambda*(epsilon2*(U[i+1].rho - U[i].rho) - epsilon4*(U[i+2].rho - 3.0*U[i+1].rho + 3.0*U[i].rho - U[i-1].rho));
+    d.rhouu_and_p = lambda*(epsilon2*(U[i+1].rhou - U[i].rhou) - epsilon4*(U[i+2].rhou - 3.0*U[i+1].rhou + 3.0*U[i].rhou - U[i-1].rhou));
+    d.rhouht = lambda*(epsilon2*(U[i+1].rhoet - U[i].rhoet) - epsilon4*(U[i+2].rhoet - 3.0*U[i+1].rhoet + 3.0*U[i].rhoet - U[i-1].rhoet));
     fluxes Ftemp;
     fluxcalc(Ftemp, U_avg[i], C);
     Ftemp.rhou += d.rhou;
@@ -159,19 +163,6 @@ void compute_fluxes(vector<fluxes> &F, vector<consvar> const &U, vector<primvar>
     Ftemp.rhouht += d.rhouht;
     F.push_back(Ftemp); 
     dvec.push_back(d);//Need to save d so that we can interpolate to ghost cells and add to F in the end
-
-    //cout << " nu = " << nu[0] << " " <<  nu[1] << " "<< nu[2] << " " << nu[3] <<  endl;
-    //cout << " P = " << P[0] << " " <<  P[1] << " "<< P[2] << " " << P[3] <<  " " << P[4] << " " << P[5] <<endl;
-    //
-    //cout << " V = " << V[i-2].p << " " <<  V[i-1].p << " "<< V[i].p << " " << V[i+1].p <<  " " << V[i+2].p << " " << V[i+3].p <<endl;
-    //cout << " x = " << xmin+dx*i << endl;
-    //cout << " U = " << U[i-2].rhou << " " <<  U[i-1].rhou << " "<< U[i].rhou << " " << U[i+1].rhou <<  " " << U[i+2].rhou << " " << U[i+3].rhou <<endl;
-    //
-
-    //if (std::isnan(U[i].rho) == true) break;
-   // cout << "d Flux: " << d.rhou << " " << d.rhouu_and_p << " " << d.rhouht << endl;
-
-    //cout << "Flux: " << F[i].rhou << " " << F[i].rhouu_and_p << " " << F[i].rhouht << endl;
   }
   
   //Interpolate d for the first and last two faces
@@ -181,7 +172,6 @@ void compute_fluxes(vector<fluxes> &F, vector<consvar> const &U, vector<primvar>
   dvec.insert(dvec.begin(), {2.0*dvec[0].rhou - dvec[1].rhou, 
       2.0*dvec[0].rhouu_and_p - dvec[1].rhouu_and_p, 
       2.0*dvec[0].rhouht - dvec[1].rhouht});
-  //last two points interpd.
   dvec.push_back({2.0*dvec.back().rhou - dvec[dvec.size()-2].rhou, 
       2.0*dvec.back().rhouu_and_p - dvec[dvec.size()-2].rhouu_and_p, 
       2.0*dvec.back().rhouht - dvec[dvec.size()-2].rhouht});
@@ -217,36 +207,6 @@ void compute_fluxes(vector<fluxes> &F, vector<consvar> const &U, vector<primvar>
     });
   //interpolate at the end for the value of d on the left face
 }
-//compute d flux
-void compute_dflux( fluxes &d, double const &epsilon2, double const &epsilon4, double const &lambda, int const &i, vector<consvar> const &U)
-{
-  fluxes D1;
-  D1.rhou = lambda*epsilon2*(U[i+1].rho - U[i].rho);
-  D1.rhouu_and_p = lambda*epsilon2*(U[i+1].rhou - U[i].rhou);
-  D1.rhouht = lambda*epsilon2*(U[i+1].rhoet - U[i].rhoet);
-
-  fluxes D3;
-  D3.rhou =lambda*epsilon4*(U[i+2].rho - 3.0*U[i+1].rho + 3.0*U[i].rho - U[i-1].rho);
-  D3.rhouu_and_p =lambda*epsilon4*(U[i+2].rhou - 3.0*U[i+1].rhou + 3.0*U[i].rhou - U[i-1].rhou);
-  D3.rhouht =lambda*epsilon4*(U[i+2].rhoet - 3.0*U[i+1].rhoet + 3.0*U[i].rhoet - U[i-1].rhoet);
-
-  d.rhou = D1.rhou - D3.rhou;
-  d.rhouu_and_p = D1.rhouu_and_p - D3.rhouu_and_p;
-  d.rhouht = D1.rhouht - D3.rhouht;
-}
-// computes epsilon2 and 4 from pressures
-void artificial_viscosity( vector<double> const &P, double &epsilon2, double &epsilon4)
-{
-  vector <double> nu(4,0.0);
-  nu[0] = abs((P[2] - 2.0*P[1] - P[0])/(P[2] + 2.0*P[1] + P[0]));
-  nu[1] = abs((P[3] - 2.0*P[2] - P[1])/(P[3] + 2.0*P[2] + P[1]));
-  nu[2] = abs((P[4] - 2.0*P[3] - P[2])/(P[4] + 2.0*P[3] + P[2]));
-  nu[3] = abs((P[5] - 2.0*P[4] - P[3])/(P[5] + 2.0*P[4] + P[3]));
-  double numax = max(nu[0], nu[1]);
-  numax = max(numax, nu[2]); numax = max(numax, nu[3]);
-  epsilon2 = kappa2*numax;
-  epsilon4 = kappa4*max(0.0, kappa4-epsilon2);
-}
 
 //This takes a given consvar vector and returns a flux vector
 void fluxcalc(fluxes &F, consvar const &U, constants C)
@@ -268,7 +228,7 @@ void reconstruct_U(vector<consvar> &U_avg, vector<consvar> const &U)
     Utemp.rhoet = 0.5*(U[i+1].rhoet+U[i].rhoet);
     U_avg.push_back(Utemp);
   }
-  //cout << " Size of interface values " << U.size() << endl;
+  cout << " Size of interface values " << U.size() << endl;
 }
 
 /****************************************************************************/

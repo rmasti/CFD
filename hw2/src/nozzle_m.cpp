@@ -10,7 +10,6 @@
 #include <fstream>
 #include <cmath>
 #include <vector>
-
 #include "nozzle.hpp"
 FILE *fp1;
 FILE *fp2;
@@ -82,6 +81,10 @@ void isentropic(constants C)
   {
     vector<fluxes> Farr;//defined on the cell faces
     compute_fluxes(Farr, Uold, Vold, C);
+
+    set_boundary_cond(Marr, Vold, Uold, C);
+
+    //cout << " size of matrix " << Vold[144].p << endl;
     iteration_step(Farr, Uold, Uarr, Vold, Varr, XCarr, Xarr, Marr, Resarr, C); 
     compute_residuals(Resarr, Res, Linfnorm, L1norm, L2norm, Uold, Uarr); 
     if (n % 5 == 0) write_out(fp2, Aarr, XCarr, Varr, Marr, Uarr);
@@ -93,20 +96,20 @@ void isentropic(constants C)
       Resold[2] = Res[2];
     }
 
-    if (Res[0]/Resold[0] < C.tol || Res[1]/Resold[1] < C.tol || Res[1]/Resold[1] < C.tol)
+   /* if (Res[0]/Resold[0] < C.tol || Res[1]/Resold[1] < C.tol || Res[1]/Resold[1] < C.tol)
     {
       cout << "SOLUTION REACHED" << endl;
       break;
     }
-/*
-    if (Uold[92].rhou < 0)
-    {
-      break;
-    }
 */
+ //   double a = Uold[74].rhou;
+  //  if (std::isnan(a) == true) break;
+    /*{
+      break;
+    }*/
+
     //cout << "res 0 " << Res[0] << endl;
 
-    set_boundary_cond(Marr, Varr, Uarr, C);
 
     
     cout.precision(14);

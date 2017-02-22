@@ -110,5 +110,10 @@ double primtoM(primvar V, constants C);
 
 void compute_residuals(std::vector<consvar> &Resarr, std::vector<double> &Res, std::vector<double> &Linfnorm, std::vector<double> &L1norm, std::vector<double> &L2norm, std::vector<consvar> const &Uold, std::vector<consvar> const &Unew);
 
+void artificial_viscosity( std::vector<double> const &P, double &epsilon2, double &epsilon4);
+
+void compute_dflux( fluxes &d, double const &epsilon2, double const &epsilon4, double const &lambda, int const &i, std::vector<consvar> const &U);
+
+
 #endif
 
