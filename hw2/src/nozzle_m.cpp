@@ -48,18 +48,20 @@ void isentropic(constants C)
   vector<primvar> Varr;
   vector<consvar> Uarr;
   vector<double> Aarr;
-  vector<double> XCarr;
+  vector<double> X_center;
   vector<double> Marr;
-  vector<double> Xarr;
+  vector<double> X_interface;
 
   //These two functions fill in the vectors that were defined above for both double vectors and also primvar struct defined in the header file
-  set_geometry(Xarr, Aarr, XCarr, Marr);
 
-  initialize(Varr, Marr , Uarr, C);
 
-  set_boundary_cond(Marr, Varr, Uarr, C);
+  set_geometry(Aarr, X_interface , X_center, Marr);//good
 
-  write_out(fp2, Aarr, XCarr, Varr, Marr, Uarr);
+  initialize(Marr , Uarr, C);//good
+  extrapolate_to_ghost(Uarr, C);//good
+  set_boundary_cond(Uarr, C); //good
+
+  write_out(fp2, Aarr, X_center, Uarr, C); //good
 
   vector<primvar> Vold=Varr;
   vector<consvar> Uold=Uarr;
@@ -69,25 +71,21 @@ void isentropic(constants C)
   vector<double> Linfnorm(3, 10.0);
   vector<double> L1norm(3, 10.0);
  
-  vector<consvar> Resarr(XCarr.size());
+  vector<consvar> Resarr(X_center.size());
 
-  vector<fluxes> Farr;//defined on the cell faces
-  compute_fluxes(Farr, Uarr, Varr, C);
-  iteration_step(Farr, Uold, Uarr, Vold, Varr, XCarr, Xarr, Marr, Resarr, C);
- 
   vector<double> Resold(3, 10.0);
 
-  for (int n=0; n < 100; n++)
+  for (int n=0; n < 10000; n++)
   {
     vector<fluxes> Farr;//defined on the cell faces
-    compute_fluxes(Farr, Uold, Vold, C);
-
-    set_boundary_cond(Marr, Vold, Uold, C);
-
+    compute_fluxes(Farr, Uold, C);
+    extrapolate_to_ghost(Uold, C);//good
+    set_boundary_cond(Uold, C);
     //cout << " size of matrix " << Vold[144].p << endl;
-    iteration_step(Farr, Uold, Uarr, Vold, Varr, XCarr, Xarr, Marr, Resarr, C); 
+    cout << "made it through fluxes" << endl;
+    iteration_step(Farr, Uold, Uarr, Vold, Varr, X_center, X_interface, Marr, Resarr, C); 
     compute_residuals(Resarr, Res, Linfnorm, L1norm, L2norm, Uold, Uarr); 
-    if (n % 5 == 0) write_out(fp2, Aarr, XCarr, Varr, Marr, Uarr);
+    if (n % 5 == 0) write_out(fp2, Aarr, X_center,  Uarr, C);
 
     if (n==3)
     {
@@ -95,6 +93,7 @@ void isentropic(constants C)
       Resold[1] = Res[1];
       Resold[2] = Res[2];
     }
+    //cout << "RES: " << Res[0]/Resold[0] <<  " " << Res[1]/Resold[1] << " " << Res[2]/Resold[2] << endl; 
 
    /* if (Res[0]/Resold[0] < C.tol || Res[1]/Resold[1] < C.tol || Res[1]/Resold[1] < C.tol)
     {
@@ -110,8 +109,6 @@ void isentropic(constants C)
 
     //cout << "res 0 " << Res[0] << endl;
 
-
-    
     cout.precision(14);
     //cout << " Farr: rhou = " << Farr[93].rhou << " rhouuandp = "<< Farr[93].rhouu_and_p << 
      // " rhouht = " << Farr[93].rhouht << endl;

@@ -6,17 +6,17 @@
  */
 #ifndef nozzle_H_
 #define nozzle_H_
-#define N 149
+#define N 151
 #define xmax 1.5
 #define xmin -1.5
 #define xmax_dom 1.0
 #define xmin_dom -1.0
-#define num_ghost_cells 1
+#define num_ghost_cells 3
 #define R 287.0
 #define kappa4 (1.0/32.0)
 #define kappa2 (1.0/4.0)
 #define cfl 0.1
-#define dx (xmax-xmin)/N
+#define dx (xmax-xmin)/(N-1)
 #define localdt false
 #define nmax 50000
 /////////////////////////////////////////////////////////////////////////
@@ -83,22 +83,21 @@ void isentropic(constants C);
 
 void isentropic_exact(constants C);
 
-void initialize(std::vector<primvar> &V, std::vector<double> &M, 
-    std::vector<consvar> &U, constants C);
+void initialize(std::vector<double> &M, std::vector<consvar> &U, constants C);
 
-void set_geometry(std::vector<double> &Xarr, std::vector<double> &Aarr, std::vector<double> &XCarr, std::vector<double> &Marr);
+void set_geometry(std::vector<double> &Aarr, std::vector<double> & xinterface, std::vector<double> & xcenter, std::vector<double> &Marr);
 
 void output_file_headers();
 
-void write_out(FILE* &fp2, std::vector<double> const &Aarr, std::vector<double> const &XCarr, std::vector<primvar> const &V, std::vector<double> const &M, std::vector<consvar> const &U);
+void write_out(FILE* &fp2, std::vector<double> const &Aarr, std::vector<double> const &XCarr, std::vector<consvar> const &U, constants C);
 
-void set_boundary_cond(std::vector<double> &M, std::vector<primvar> &V, std::vector<consvar> &U, constants C);
+void set_boundary_cond(std::vector<consvar> &U, constants C);
 
-void compute_fluxes(std::vector<fluxes> &F, std::vector<consvar> const &U, std::vector<primvar> const &V, constants C);
+void compute_fluxes(std::vector<fluxes> &F, std::vector<consvar> const &U, constants C);
 
 void reconstruct_U(std::vector<consvar> &U_avg, std::vector<consvar> const &U);
 
-void fluxcalc(fluxes &F, consvar const &U, constants C);
+fluxes fluxcalc( consvar const &U, constants C);
 
 void iteration_step(std::vector<fluxes> &F, std::vector<consvar> &Uold, std::vector<consvar> &Unew, std::vector<primvar> &Vold, std::vector<primvar> &Vnew, std::vector<double> const &XCarr, std::vector<double> const &Xarr, std::vector<double> &Marr, std::vector<consvar> &Resarr, constants C);
 
@@ -110,10 +109,13 @@ double primtoM(primvar V, constants C);
 
 void compute_residuals(std::vector<consvar> &Resarr, std::vector<double> &Res, std::vector<double> &Linfnorm, std::vector<double> &L1norm, std::vector<double> &L2norm, std::vector<consvar> const &Uold, std::vector<consvar> const &Unew);
 
-void artificial_viscosity( std::vector<double> const &P, double &epsilon2, double &epsilon4);
+void artificial_viscosity(std::vector<fluxes> &dvec, std::vector<consvar> const &U, constants C);
 
-void compute_dflux( fluxes &d, double const &epsilon2, double const &epsilon4, double const &lambda, int const &i, std::vector<consvar> const &U);
 
+fluxes compute_dflux( double const &epsilon2, double const &epsilon4, double const &lambda, int const   &i, std::vector<consvar> const &U);
+
+
+void extrapolate_to_ghost(std::vector<consvar> &Uarr, constants C);
 
 #endif
 
