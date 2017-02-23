@@ -6,17 +6,17 @@
  */
 #ifndef nozzle_H_
 #define nozzle_H_
-#define N 151
+#define N 150
 #define xmax 1.5
 #define xmin -1.5
 #define xmax_dom 1.0
 #define xmin_dom -1.0
 #define num_ghost_cells 3
 #define R 287.0
-#define kappa4 (1.0/32.0)
+#define kappa4 (1.0/64.0)
 #define kappa2 (1.0/4.0)
 #define cfl 0.1
-#define dx (xmax-xmin)/(N-1)
+#define dx (xmax-xmin)/(N)
 #define localdt false
 #define nmax 50000
 /////////////////////////////////////////////////////////////////////////
@@ -101,7 +101,9 @@ fluxes fluxcalc( consvar const &U, constants C);
 
 void iteration_step(std::vector<fluxes> &F, std::vector<consvar> &Uold, std::vector<consvar> &Unew, std::vector<primvar> &Vold, std::vector<primvar> &Vnew, std::vector<double> const &XCarr, std::vector<double> const &Xarr, std::vector<double> &Marr, std::vector<consvar> &Resarr, constants C);
 
-double compute_timestep(std::vector<primvar> const &Vold, int i, constants C);
+void iteration_step(std::vector<fluxes> &F, std::vector<consvar> &Uold, std::vector<consvar> &Unew, std::vector<double> const &XCarr, std::vector<double> const &Xarr, std::vector<consvar> &Resarr, constants C);
+
+double compute_timestep(std::vector<consvar> const &Uold, int i, constants C);
 
 double compute_volume(std::vector<double> const &Xarr, int i, std::vector<double> &ALR);
 
@@ -111,9 +113,7 @@ void compute_residuals(std::vector<consvar> &Resarr, std::vector<double> &Res, s
 
 void artificial_viscosity(std::vector<fluxes> &dvec, std::vector<consvar> const &U, constants C);
 
-
 fluxes compute_dflux( double const &epsilon2, double const &epsilon4, double const &lambda, int const   &i, std::vector<consvar> const &U);
-
 
 void extrapolate_to_ghost(std::vector<consvar> &Uarr, constants C);
 
