@@ -32,11 +32,14 @@ TEST_CASE( "Test timestep calculator", "[dt]" ) {
   Vtemp.rho = 1.0889;
   Vtemp.u = 435;
   Vtemp.p = 1.55e5; //Pa
+  C.cfl = 0.1;
+  double a = sqrt(Vtemp.p*C.gamma/Vtemp.rho);
+  double lambda = abs(Vtemp.u + a);
   vector<consvar> Uold;
   Uold.push_back(primtocons(Vtemp, C));
   int i = 0;
   double dt = compute_timestep(Uold, i, C);
-  double predicted = cfl*dx/(881.41200787923);
+  double predicted = C.cfl*dx/lambda;
   REQUIRE( abs(dt-predicted)/predicted <= reltol );
 }
 

@@ -6,16 +6,15 @@
  */
 #ifndef nozzle_H_
 #define nozzle_H_
-#define N 150
+#define N 75
 #define xmax 1.5
 #define xmin -1.5
 #define xmax_dom 1.0
 #define xmin_dom -1.0
 #define num_ghost_cells 3
 #define R 287.0
-#define kappa4 (1.0/64.0)
+#define kappa4 (1.0/32.0)
 #define kappa2 (1.0/4.0)
-#define cfl 0.1
 #define dx (xmax-xmin)/(N)
 #define localdt false
 #define nmax 50000
@@ -51,6 +50,7 @@ struct constants
   double gamma;
   bool outflow;
   double pb; //back pressure
+  double cfl;
 };
 // create consvar structure uses type double
 struct consvar

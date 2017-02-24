@@ -22,7 +22,7 @@ void compute_residuals(vector<consvar> &Resarr, vector<double> &Res, vector<doub
   vector<double> sumresidual(3,0.0);
   vector<double> sumsqrresidual(3,0.0);
 
-  for (int i=0; i<Uold.size()-1; i++)
+  for (int i=num_ghost_cells; i<(Uold.size()-num_ghost_cells); i++)
   {
     sumresidual[0] += Resarr[i].rho;
     sumresidual[1] += Resarr[i].rhou;
@@ -76,8 +76,7 @@ void iteration_step(
     if (dtmin > dttemp) dtmin = dttemp;
   }
   
-  //for(int i=0; i < (Uold.size()-1); i++) 
-  for(int i=num_ghost_cells; i < ((Uold.size()-1)-num_ghost_cells); i++) 
+  for(int i=num_ghost_cells; i < Uold.size() - num_ghost_cells ; i++) 
   {
     int i_interior = i-num_ghost_cells;
     double dt;
@@ -92,42 +91,61 @@ void iteration_step(
     primvar Vold = constoprim(Uold[i], C);
     double S = Vold.p*dAdx(XCarr[i]);
     double inv_volume = 1.0/volume;
-   
+ 
+    //S = 0.0;
+
+    //cout << "dt * inv_volume " << dt*inv_volume << endl;
+    //
     double M = primtoM(Vold, C);
 
     //cout << " X " << Xarr[(i_interior+1)+num_ghost_cells] << " "<<  Xarr[i_interior+num_ghost_cells]<<" " << XCarr[i] << endl;
+    
+    
     Unew[i].rho = Uold[i].rho - dt*inv_volume*(F[i_interior+1].rhou*ALR[1] - F[i_interior].rhou*ALR[0]);
     Unew[i].rhou = Uold[i].rhou + S*dx*dt*inv_volume - dt*inv_volume*(F[i_interior+1].rhouu_and_p*ALR[1] - F[i_interior].rhouu_and_p*ALR[0]);
     Unew[i].rhoet = Uold[i].rhoet - dt*inv_volume*(F[i_interior+1].rhouht*ALR[1] - F[i_interior].rhouht*ALR[0]);
 
+    //cout << "cont rho " << dt*inv_volume*(F[i_interior+1].rhou*ALR[1] - F[i_interior].rhou*ALR[0]) << " " << Uold[i].rho <<endl;
+
+    //cout << "cont rhou " << dt*inv_volume*(F[i_interior+1].rhouu_and_p*ALR[1] - F[i_interior].rhouu_and_p*ALR[0]) << " " << S*dx*dt*inv_volume << " "<< Uold[i].rhou <<endl;
+
+    double a = abs((dt*inv_volume*(F[i_interior+1].rhou*ALR[1] - F[i_interior].rhou*ALR[0]))) ;
+        
+    double b =abs((S*dx*dt*inv_volume - dt*inv_volume*(F[i_interior+1].rhouu_and_p*ALR[1] - F[i_interior].rhouu_and_p*ALR[0]))); 
+
+
+    double c = abs((dt*inv_volume*(F[i_interior+1].rhouht*ALR[1] - F[i_interior].rhouht*ALR[0])));
+    a = abs(Uold[i].rho - a)/abs(Uold[i].rho);
+
+    b = abs(Uold[i].rhou - b)/abs(Uold[i].rhou);
+
+    c = abs(Uold[i].rhoet - c)/abs(Uold[i].rhoet);
+
+    cout << "flux to old dif i "<< i << " rho " << a << " rhou " << b << " rhoet " << c<<endl;
+
+
+    //cout << "cont rhoetet " << dt*inv_volume*(F[i_interior+1].rhouht*ALR[1] - F[i_interior].rhouht*ALR[0]) << " " << Uold[i].rhoet <<endl;
+
     //cout << i << " " << Unew[i].rho << " " << Unew[i].rhou << " " << Unew[i]. rhov << " " << Unew[i].rhoet << endl;
+
+    if (Unew.back().rho < 0.0 || Unew.back().rhou < 0.0 || Unew.back().rhoet < 0.0) exit(1);
+
     //cout << "flux cont = " << F[i].rhou << " " <<  F[i].rhouu_and_p << F[i].rhouht << endl;
+    /*cout << " Residual : " << abs(Unew[i].rho - Uold[i].rho) << " "<< 
+      abs(Unew[i].rhou - Uold[i].rhou) << " " << 
+      Unew[i].rhoet - Uold[i].rhoet << endl;
+      */
 
     Resarr[i].rho = dt*inv_volume*abs(Unew[i].rho - Uold[i].rho);
     Resarr[i].rhou = dt*inv_volume*abs(Unew[i].rhou - Uold[i].rhou);
     Resarr[i].rhoet = dt*inv_volume*abs(Unew[i].rhoet - Uold[i].rhoet);
   }
+  //cout << "Unew size "<< Unew.size() << endl;
 }
 
-double compute_volume(vector<double> const &Xarr, int i, vector<double> &ALR)
-{
-  double xleft = Xarr[i];
-  double xright = Xarr[i+1];
-  double Aleft = A_x(xleft);
-  double Aright = A_x(xright);
-  double Aavg = 0.5*(Aleft+Aright);
-  ALR[0] = Aleft;
-  ALR[1] = Aright;
-  return abs(xright-xleft)*Aavg;
-}
 
-double compute_timestep(vector<consvar> const &Uold, int i, constants C)
-{
-  primvar Vold = constoprim(Uold[i], C);
-  double a = sqrt(Vold.p*C.gamma/Vold.rho);
-  double val = cfl*dx/(abs(Vold.u) + a);
-  return  val;
-}
+
+
 
 /********************************* FLUXES ***********************************/
 
@@ -155,10 +173,17 @@ void compute_fluxes(vector<fluxes> &F, vector<consvar> const &U,  constants C)
 
   for(int i = 0 ; i < F.size(); i++)
   {
-    F[i].rhou += dvec[i].rhou;
-    F[i].rhouu_and_p += dvec[i].rhouu_and_p;
-    F[i].rhouht += dvec[i].rhouht;
+   
+    //cout << "Flux: i " << i << " " << F[i].rhou << " "<< F[i].rhouu_and_p << " "<< F[i].rhouht << endl;
+
+    //cout << "dFlux: i " << i << " " << dvec[i].rhou << " "<< dvec[i].rhouu_and_p << " "<< dvec[i].rhouht << endl;
+    F[i].rhou = F[i].rhou + dvec[i].rhou;
+    F[i].rhouu_and_p = F[i].rhouu_and_p + dvec[i].rhouu_and_p;
+    F[i].rhouht = F[i].rhouht + dvec[i].rhouht;
     if (std::isnan(F[i].rhou) || std::isnan(F[i].rhouu_and_p) || std::isnan(F[i].rhouht)) exit(1); 
+
+
+    //if (F.back().rhouu_and_p < 0.0 || F.back().rhou < 0.0 || F.back().rhouht < 0.0) exit(1);
   }
 
 }
@@ -172,9 +197,15 @@ fluxes fluxcalc(consvar const &U, constants C)
   double u = U.rhou/U.rho;
   double p = (C.gamma-1.0)*(U.rhoet-0.5*U.rhou*u);
   F.rhou = U.rhou;
-  F.rhouu_and_p = U.rhou*u+p;
-  //F.rhouht = u*rhoet + p*u;
-  F.rhouht = U.rhou*((C.gamma/(C.gamma-1.0))*p/U.rho + 0.5*u*u);
+  //F.rhouu_and_p = U.rhou*u+p;
+  //F.rhouht = U.rhou*((C.gamma/(C.gamma-1.0))*p/U.rho + 0.5*u*u);
+  F.rhouht = (U.rhoet*U.rhou)/U.rho + 
+    (U.rhou/U.rho)*((C.gamma-1.0)*U.rhoet -
+        ((C.gamma-1.0)/2.0)*U.rhou*U.rhou/U.rho);
+
+  F.rhouu_and_p = ((3.0 - C.gamma)/2.0)*U.rhou*U.rhou/U.rho 
+    + (C.gamma - 1.0)*U.rhoet;
+  //cout << " F " << F.rhou<< " " << F.rhouu_and_p << " " << F.rhouht << endl;
   return F;
 }
 
@@ -182,19 +213,21 @@ fluxes fluxcalc(consvar const &U, constants C)
 void reconstruct_U(vector<consvar> &U_avg, vector<consvar> const &U)
 {
   // This will start at i = 3 which is the first cell of the domain of interest
-  for(int i = num_ghost_cells-1; i<U.size()-num_ghost_cells; i++)
+  for(int i = num_ghost_cells-1; i < U.size()-num_ghost_cells; i++)
   {
     consvar Utemp;
-    Utemp.rho = 0.5*(U[i+1].rho+U[i].rho);
-    Utemp.rhou = 0.5*(U[i+1].rhou+U[i].rhou);
-    Utemp.rhov = 0.5*(U[i+1].rhov+U[i].rhov);
-    Utemp.rhoet = 0.5*(U[i+1].rhoet+U[i].rhoet);
+    Utemp.rho = 0.5*(U[i+1].rho + U[i].rho);
+    Utemp.rhou = 0.5*(U[i+1].rhou + U[i].rhou);
+    Utemp.rhov = 0.5*(U[i+1].rhov + U[i].rhov);
+    Utemp.rhoet = 0.5*(U[i+1].rhoet + U[i].rhoet);
     U_avg.push_back(Utemp);
+
+    //if (Utemp.rhou < 0.0) exit(1);
+    //cout << "Uavg " <<  U_avg.back<< endl;
   }
-  //cout << "Uavg " <<  U_avg.size()<< endl;
 }
 
-/****************************************************************************/
+/***************************************************************************/
 
 /*************************** ARTIFICIAL VISCOSITY ***************************/
 //return a dvec of all the fluxes on all interfaces
@@ -203,8 +236,10 @@ void artificial_viscosity(vector<fluxes> &dvec, vector<consvar> const &U, consta
   vector <double> P(6,10.0);
   vector <double> nu(4, 0.0);
   //cout << U.size() << endl;
- // need to loop over the interior points just like Uavg and Flux 
-  for(int i = num_ghost_cells-1; i<=U.size()-num_ghost_cells; i++)
+ 
+
+  //need to loop over the interior points just like Uavg and Flux 
+  for(int i = num_ghost_cells-1; i < (U.size())-num_ghost_cells; i++)
   {
     primvar V_2 = constoprim(U[i-2], C);
     primvar V_1 = constoprim(U[i-1], C);
@@ -217,11 +252,11 @@ void artificial_viscosity(vector<fluxes> &dvec, vector<consvar> const &U, consta
     nu[1] = abs((V1.p - 2.0*V.p - V_1.p)/(V1.p + 2.0*V.p + V_1.p));
     nu[2] = abs((V2.p - 2.0*V1.p - V.p)/(V2.p + 2.0*V1.p + V.p));
     nu[3] = abs((V3.p - 2.0*V2.p - V1.p)/(V3.p + 2.0*V2.p + V1.p));
- //   cout << " " << nu[0] << " "<<  nu[1] << " "<<  nu[2] << " "<<  nu[3] << " "<<  endl; 
+    //cout << "nu  " << nu[0] << " "<<  nu[1] << " "<<  nu[2] << " "<<  nu[3] << " "<<  endl; 
     double numax = max(nu[0], nu[1]);
     numax = max(numax, nu[2]); numax = max(numax, nu[3]);
+    if (numax >= 1.0) numax = 0.9;
     double epsilon2 = kappa2*numax;
-   // epsilon2 = 0.0;
     double epsilon4 = kappa4*max(0.0, kappa4-epsilon2);
 
     double a_1 = sqrt(V_1.p*C.gamma/V_1.rho); 
@@ -232,11 +267,11 @@ void artificial_viscosity(vector<fluxes> &dvec, vector<consvar> const &U, consta
     double lambda_avg = 0.5*(lambda+lambda_1);
 
     //cout << epsilon2 << " " << epsilon4 << endl;
-    
+   
     //lambda_avg = 0.0;
     dvec.push_back(compute_dflux(epsilon2, epsilon4, lambda_avg, i, U)); 
 
-    cout << "dvec values " << dvec.back().rhou << " " << dvec.back().rhouu_and_p << " " << dvec.back().rhouht << endl;
+    //cout << "dvec values " << dvec.back().rhou << " " << dvec.back().rhouu_and_p << " " << dvec.back().rhouht << endl;
 
     if (std::isnan(lambda_avg)) exit(1);
   }
@@ -247,6 +282,7 @@ fluxes compute_dflux( double const &epsilon2, double const &epsilon4, double con
 {
   fluxes d;
   fluxes D1;
+  //cout << i << endl;
   D1.rhou = lambda*epsilon2*(U[i+1].rho - U[i].rho);
   D1.rhouu_and_p = lambda*epsilon2*(U[i+1].rhou - U[i].rhou);
   D1.rhouht = lambda*epsilon2*(U[i+1].rhoet - U[i].rhoet);
@@ -256,15 +292,15 @@ fluxes compute_dflux( double const &epsilon2, double const &epsilon4, double con
   D3.rhouu_and_p =lambda*epsilon4*(U[i+2].rhou - 3.0*U[i+1].rhou + 3.0*U[i].rhou - U[i-1].rhou);
   D3.rhouht =lambda*epsilon4*(U[i+2].rhoet - 3.0*U[i+1].rhoet + 3.0*U[i].rhoet - U[i-1].rhoet);
 
-  d.rhou = D1.rhou - D3.rhou;
-  d.rhouu_and_p = D1.rhouu_and_p - D3.rhouu_and_p;
-  d.rhouht = D1.rhouht - D3.rhouht;
+  d.rhou = -1*D1.rhou + D3.rhou;
+  d.rhouu_and_p = -1*D1.rhouu_and_p + D3.rhouu_and_p;
+  d.rhouht = -1*D1.rhouht + D3.rhouht;
   return d;
 }
 
-/****************************************************************************/
+/***************************************************************************/
 
-/*************************** BOUNDARY CONDITIONS ****************************/
+/*************************** BOUNDARY CONDITIONS ***************************/
 //This function extrapolates interior to the ghost cells
 void extrapolate_to_ghost( vector<consvar> &Uarr, constants C)
 {
@@ -278,6 +314,7 @@ void extrapolate_to_ghost( vector<consvar> &Uarr, constants C)
     //left
     Uarr[ileft-1].rho = 2.0*Uarr[ileft].rho - Uarr[ileft+1].rho;
     Uarr[ileft-1].rhou = 2.0*Uarr[ileft].rhou - Uarr[ileft+1].rhou;
+    //if (Uarr[ileft-1].rhou < 0.0) Uarr[ileft-1].rhou = 10.0;
     Uarr[ileft-1].rhov = 2.0*Uarr[ileft].rhov - Uarr[ileft+1].rhov;
     Uarr[ileft-1].rhoet = 2.0*Uarr[ileft].rhoet - Uarr[ileft+1].rhoet;
     //right
@@ -298,11 +335,12 @@ void set_boundary_cond( vector<consvar> &U, constants C)
   //inflow
   double in = 2.0*M_1 - M_2;
 
-  if (in < 0.0) M_0 = 0.1;
+  if (in < 0.1) M_0 = 0.1;
   else M_0 = in;
  
   U[0] = primtocons(Mtoprim(M_0, C), C);
-  //cout << U[0].rho << " " << U[0].rhou << " " << U[0].rhoet << endl;
+
+  //cout<< M_0 << " " << U[0].rho << " " << U[0].rhou << " " << U[0].rhoet << endl;
 
   //outflow
   if (C.outflow == true)
@@ -335,39 +373,11 @@ void set_boundary_cond( vector<consvar> &U, constants C)
   }
 }
 
-/*****************************************************************************/
+/***************************************************************************/
 
 
 
-/********************************* WRITE OUT ********************************/
-void write_out(FILE* & file, vector<double> const &Aarr, vector<double> const &XCarr, vector<consvar> const &U, constants C)
-{
-  int gc = num_ghost_cells;
-  for(int i = (num_ghost_cells); i < XCarr.size()-num_ghost_cells ; i++) 
-  {
-    primvar V = constoprim(U[i], C);
-    double M = primtoM(V, C);
-    fprintf(file, "%e %e %e %e %e %e %e %e %e\n",XCarr[i], Aarr[i], V.rho, 
-        V.u, V.p/1000.0, M, U[i].rho, U[i].rhou, U[i].rhoet);
-  } 
-}
-/*****************************************************************************/
-
-/********************************* INITIALIZE ********************************/
-//CHECKED
-void initialize( vector<double> &M, vector<consvar> &U, constants C)
-{
-  //ADD LAYERS OF GHOST CELLS TO ALL THREE VECTORS
-  for(int i = 0; i < M.size(); i++) 
-  { 
-    primvar Vtemp = Mtoprim(M[i], C);
-    U.push_back(primtocons(Vtemp, C));
-  }
-  //cout << " size " << " " << U.size() << " " << M.size() << endl;
-}
-/*******************************************************************************/
-
-/********************************* SET GEOMETRY ********************************/
+/******************************* SET GEOMETRY ******************************/
 //This function sets the x interface coordinates, and also the x center coordinates
 void set_geometry(vector<double> &Aarr, vector<double> & xinterface , vector<double> &xcenter, vector<double> &Marr)
 {
@@ -392,43 +402,70 @@ void set_geometry(vector<double> &Aarr, vector<double> & xinterface , vector<dou
   //cout << xcenter.back() << " "<< xinterface.back() <<  endl;
 }
 
-// Compute the area and derivative of area it takes in double x and return double A. It also computes initial mach number guess.
-double A_x(double x)
-{
-  if (x < xmin_dom || x > xmax_dom) return 1.0;
-  else return 0.2 + 0.4*(1.0 + sin(M_PI*(x-0.5)));//function that governs Area for nozzle
-}
-double dAdx(double x)
-{
-  if (x <= -1.0 || x >= 1.0) return 0.0;
-  else return 0.4*M_PI*cos(M_PI*(x-0.5));//derivative of func above
-}
 double M_x(double x)
 {
-  double slope = (1.9 - 0.1)/(xmax_dom - xmin_dom);
+/*  double slope = (1.5 - 0.5)/(xmax_dom - xmin_dom);
   double b = 0.1-slope*xmin_dom;
   if (x < xmin_dom) return slope*xmin_dom+b;
   if (x > xmax_dom ) return slope*xmax_dom+b;
-  else return slope*x+b;
+*/
+  double slope = (1.9 - 0.1)/(xmax - xmin);
+  double b = 0.1-slope*xmin;
+  return slope*x+b;
 }
 /****************************** END SET GEOMETRY *******************************/
 
 
 /********************************* CONVERSIONS *********************************/
 // This function converts a conservative variable vector into a primitive variable vector
+double primtoM(primvar V, constants C)
+{
+  double a = sqrt(V.p*C.gamma/V.rho); 
+  return V.u/a;
+}
+/************************** END CONVERSIONS ************************************/
+
+/////////////////
+//checked functions//
+/////////////////
+/////////////////
+//checked functions//
+/////////////////
+/////////////////
+//checked functions//
+/////////////////
+
+double compute_timestep(vector<consvar> const &Uold, int i, constants C)
+{
+  primvar Vold = constoprim(Uold[i], C);
+  double a = sqrt(Vold.p*C.gamma/Vold.rho);
+  double val = C.cfl*dx/(abs(Vold.u) + a);
+  return  val;
+}
+
+void initialize( vector<double> &M, vector<consvar> &U, constants C)
+{
+  //ADD LAYERS OF GHOST CELLS TO ALL THREE VECTORS
+  for(int i = 0; i < M.size(); i++) 
+  { 
+    primvar Vtemp = Mtoprim(M[i], C);
+    U.push_back(primtocons(Vtemp, C));
+  }
+  //cout << " size " << " " << U.size() << " " << M.size() << endl;
+}
+
 primvar constoprim(consvar U, constants C)
 {
   primvar out;
   out.rho = U.rho;
   double invrho = 1.0/U.rho;
-  out.u = U.rhou*invrho;
+  out.u = U.rhou/U.rho;
   out.v = U.rhov*invrho;
-  out.p = (C.gamma-1.0)*(U.rhoet - 0.5*invrho*U.rhou*U.rhou);
+  out.p = (C.gamma-1.0)*(U.rhoet - 0.5*out.u*out.u*U.rho);
   //if (out.p < 0) out.p = C.p0*0.1;
   //if (out.rho < 0) out.rho = 0.1*C.p0/(R*C.T0);
   return out;
 }
-
 
 
 // This function does vice versa
@@ -441,6 +478,9 @@ consvar primtocons(primvar V, constants C)
   out.rhoet = (V.p/(C.gamma-1.0)) + 0.5*V.rho*(V.u*V.u );
   return out;
 }
+
+
+
 //This function converts mach number into the primitive variables
 primvar Mtoprim(double M, constants C)
 {
@@ -454,12 +494,46 @@ primvar Mtoprim(double M, constants C)
   return answer;
 }
 
-double primtoM(primvar V, constants C)
+double compute_volume(vector<double> const &Xarr, int i, vector<double> &ALR)
 {
-  double a = sqrt(V.p*C.gamma/V.rho); 
-  return V.u/a;
+  double xleft = Xarr[i];
+  double xright = Xarr[i+1];
+  double Aleft = A_x(xleft);
+  double Aright = A_x(xright);
+  double Aavg = 0.5*(Aleft+Aright);
+  ALR[0] = Aleft;
+  ALR[1] = Aright;
+  return abs(xright-xleft)*Aavg;
 }
-/************************** END CONVERSIONS ************************************/
+
+// Compute the area and derivative of area it takes in double x and return double A. It also computes initial mach number guess.
+double A_x(double x)
+{
+  if (x < xmin_dom || x > xmax_dom) return 1.0;
+  else return 0.2 + 0.4*(1.0 + sin(M_PI*(x-0.5)));//function that governs Area for nozzle
+}
+double dAdx(double x)
+{
+  if (x < -1.0 || x > 1.0) return 0.0;
+  else return 0.4*M_PI*cos(M_PI*(x-0.5));//derivative of func above
+}
+
+/********************************* WRITE OUT ********************************/
+void write_out(FILE* & file, vector<double> const &Aarr, vector<double> const &XCarr, vector<consvar> const &U, constants C)
+{
+  int gc = num_ghost_cells;
+  for(int i = (num_ghost_cells); i < XCarr.size()-num_ghost_cells ; i++) 
+  {
+    primvar V = constoprim(U[i], C);
+    double M = primtoM(V, C);
+    fprintf(file, "%e %e %e %e %e %e %e %e %e\n",XCarr[i], Aarr[i], V.rho, 
+        V.u, V.p/1000.0, M, U[i].rho, U[i].rhou, U[i].rhoet);
+  } 
+}
+/*****************************************************************************/
+
+
+
 
 /************************** EXACT SOLUTION *************************************/
 prim_exact exactsol(double A_x, constants C)//constants is a datastruct defined in the header

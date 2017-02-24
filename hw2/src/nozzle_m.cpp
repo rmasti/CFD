@@ -11,10 +11,11 @@
 #include <cmath>
 #include <vector>
 #include "nozzle.hpp"
+#include <string>
+#include <sstream>
 FILE *fp1;
 FILE *fp2;
 FILE *fp3;
-
 using namespace std;
 
 int main()
@@ -33,6 +34,7 @@ int main()
   consts.tol = 1.0e-8;
   consts.gamma = 1.4;
   consts.outflow = true;
+  consts.cfl = 0.1;
 
   output_file_headers();
 
@@ -57,9 +59,9 @@ void isentropic(constants C)
 
   set_geometry(Aarr, X_interface , X_center, Marr);//good
 
-  cout << Marr.size() << endl;
+  //cout << Marr.size() << endl;
   initialize(Marr , Uarr, C);//good
-  cout << Uarr.size() << endl;
+  //cout << Uarr.size() << endl;
   extrapolate_to_ghost(Uarr, C);//good
   set_boundary_cond(Uarr, C); //good
 
@@ -76,23 +78,33 @@ void isentropic(constants C)
 
   vector<double> Resold(3, 10.0);
 
-  for (int n=0; n < 500; n++)
+  for (int n=0; n < 2000; n++)
   {
     cout << "n = " << n << endl;
     vector<fluxes> Farr;//defined on the cell faces
     
     extrapolate_to_ghost(Uold, C);//good
-
     set_boundary_cond(Uold, C);
-
     compute_fluxes(Farr, Uold, C);
+  
     //cout << " size of matrix " << Vold[144].p << endl;
    // cout << "made it through fluxes" << endl;
+   
     iteration_step(Farr, Uold, Uarr, X_center, X_interface, Resarr, C); 
     //extrapolate_to_ghost(Uold, C);//good
     //set_boundary_cond(Uold, C);
     compute_residuals(Resarr, Res, Linfnorm, L1norm, L2norm, Uold, Uarr); 
-    if (n % 5 == 0) write_out(fp2, Aarr, X_center,  Uarr, C);
+    if (n % 20 == 0){
+
+      FILE *ftemp;
+      std::ostringstream ss;
+      ss << "data/q1Dnozzle_" << n << ".dat";
+      ftemp = fopen(ss.str().c_str(), "w");
+      fprintf(ftemp, "TITLE = \"Isentropic Exact Solution\"\n");
+      fprintf(ftemp, "variables=\"x(m)\"\"rho(kg/m^3)\"\"u(m/s)\"\"p(kPa)\"\"M()\"\n");
+      write_out(fp2, Aarr, X_center,  Uarr, C);
+      fclose(ftemp);
+    } 
 
     if (n==3)
     {
@@ -102,9 +114,10 @@ void isentropic(constants C)
     }
     //cout << "RES: " << Res[0]/Resold[0] <<  " " << Res[1]/Resold[1] << " " << Res[2]/Resold[2] << endl; 
 
-    //if (Res[0]/Resold[0] > 10.0) exit(1);
-    
-    cout.precision(14);
+    //if (Res[0]/Resold[0] > 1.0) exit(1);
+   
+    //if (n==1000) C.cfl = 0.1;
+    //cout.precision(14);
     //cout << " Farr: rhou = " << Farr[93].rhou << " rhouuandp = "<< Farr[93].rhouu_and_p << 
      // " rhouht = " << Farr[93].rhouht << endl;
 
