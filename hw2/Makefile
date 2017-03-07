@@ -1,7 +1,7 @@
 # define variables
 VPATH   = ./
-HDRDIR  = ./include 
-LIBDIR	= ./lib 
+HDRDIR  = ./include ./Eigen
+LIBDIR	= ./lib  ./Eigen
 # adjust this for your system
 
 # set options for this machine
@@ -26,20 +26,29 @@ LIBS = -lm
 	$(CC) $(CFLAGS) -o $*.o -c $*.cpp
 
 # list of objects to be compiled
-OBJS    = \
+#OBJS    = \
 	src/nozzle_m.o\
 	src/nozzle_f.o
 
-TESTS = \
+OBJS = \
+       src/nozzlev2_m.o\
+       src/nozzlev2_f.o
+
+
+#TESTS = \
 	src/nozzle_f.o\
 	test/tests.o
+TESTS = \
+	src/nozzlev2_f.o\
+	test/testv2.o
+
 
 main:$(OBJS) 
 	$(LD)  $(LDFLAGS) -o main $(OBJS) $(LIBS)
 	rm -r $(OBJS)
 
 tests:$(TESTS)
-	$(LD)  $(LDFLAGS) -o main_t $(TESTS) $(LIBS)
+	$(LD)  $(LDFLAGS) -o unittest $(TESTS) $(LIBS)
 	rm -r $(TESTS)
 
 
