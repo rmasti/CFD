@@ -103,22 +103,30 @@ void iteration_step(
     // ALR is the area on the left and right of the cell
     vector<double> ALR(2,0.0); 
     // return the volume and updated ALR
-    double volume = compute_volume(ALR, Xarr,i_interior);
+    double volume = compute_volume(ALR, Xarr,i);
+    //cout << setprecision(14) << Xarr[i] << endl;
     /////// Compute Source term //////
     // NOTE there is two ways to determine S
     // Converting a const to prim allows for easy access to Pressure
     primvar Vold = constoprim(Uold[i], C);
-    double S = Vold.p*dAdx(XCarr[i+1]); 
+    //cout << setprecision(14) << Vold.rho << endl;
+    double S = Vold.p*dAdx(XCarr[i]); 
+    //cout << setprecision(14) << S << endl;
     //double S = Vold.p*((ALR[1]-ALR[0])/dx);
     // Compute inverse volume as it is divided throughout
     double inv_volume = 1.0/volume;
     ///////// TAKE TIME STEP ////////
     // continuity
+    //cout << setprecision(14) << dt << endl;
+    //cout << setprecision(14) << volume << endl;
     Unew[i].rho = Uold[i].rho - dt*inv_volume*(F[i_interior+1].rhou*ALR[1] - F[i_interior].rhou*ALR[0]);
     // x-mtm
     Unew[i].rhou = Uold[i].rhou + S*dx*dt*inv_volume - dt*inv_volume*(F[i_interior+1].rhouu_and_p*ALR[1] - F[i_interior].rhouu_and_p*ALR[0]);
     // energy
     Unew[i].rhoet = Uold[i].rhoet - dt*inv_volume*(F[i_interior+1].rhouht*ALR[1] - F[i_interior].rhouht*ALR[0]);
+
+    cout << setprecision(14) << S*dx + (F[i_interior+1].rhouu_and_p*ALR[1] - F[i_interior].rhouu_and_p*ALR[0]) << endl;
+
     // Fill the residual array
     // continuity
     Resarr[i].rho = dt*inv_volume*fabs(Unew[i].rho - Uold[i].rho);
@@ -174,9 +182,13 @@ void compute_fluxes(
   ///// Combine d fluxes and F fluxes /////
   for(int i = 0 ; i < F.size(); i++)
   {
+
+    //cout << setprecision(14) <<  F[i].rhou << endl;
     F[i].rhou = F[i].rhou + dvec[i].rhou;
     F[i].rhouu_and_p = F[i].rhouu_and_p + dvec[i].rhouu_and_p;
     F[i].rhouht = F[i].rhouht + dvec[i].rhouht;
+
+    //cout << setprecision(14) <<  dvec[i].rhouu_and_p << endl;
     //cout << "flux cont rhou = " << F[i].rhou << " rhouu = " <<  F[i].rhouu_and_p << " rhouht = "<< F[i].rhouht << endl;
     if (isnan(F[i].rhou) || isnan(F[i].rhouu_and_p) || isnan(F[i].rhouht))
     {
@@ -357,14 +369,20 @@ void set_boundary_cond(
   int end = (U.size())-1;
 
   // Extrapolate the mach number
-  double M_1 = primtoM(constoprim(U[1],C), C);
-  double M_2 = primtoM(constoprim(U[2],C), C);
-  double M_0;
+
+  double M_1 = primtoM(constoprim(U[num_ghost_cells],C), C);
+  double M_2 = primtoM(constoprim(U[num_ghost_cells+1],C), C);
+  double M_0 = 0.0;
+  for(int i=0; i < num_ghost_cells; i++)
+  {
+    int ib = (num_ghost_cells - 1) - i;
+    M_0 = 2.0*M_1 - M_2;
+    U[ib] = primtocons(Mtoprim(M_0, C), C);
+    M_2 = M_1;
+    M_1 = M_0;
+  }
+
   //////// inflow ////////
-  double in = 2.0*M_1 - M_2;
-  if (in < 0.1) M_0 = 0.1;
-  else M_0 = in;
-  U[0] = primtocons(Mtoprim(M_0, C), C);
 
   
   //////// outflow ////////

@@ -6,7 +6,7 @@
  */
 #ifndef nozzle_H_
 #define nozzle_H_
-#define N 64
+#define N 10
 #define xmax 1.5
 #define xmin -1.5
 #define xmax_dom 1.0
@@ -16,7 +16,7 @@
 #define kappa2 (1.0/3.0)
 #define kappa4 (1.0/48.0)
 #define dx (xmax-xmin)/(N)
-#define localdt true
+#define localdt false
 #define nmax 10000000
 #define mymax(a,b) ((a>b)?a:b)
 #define mymin(a,b) ((a<b)?a:b)

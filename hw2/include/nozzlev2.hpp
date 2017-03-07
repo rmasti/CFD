@@ -27,7 +27,7 @@ using namespace Eigen;
 #define kappa2 (1.0/3.0)
 #define kappa4 (1.0/48.0)
 #define dx (xmax-xmin)/(N)
-#define localdt true
+#define localdt false
 #define nmax 10000000
 #define mymax(a,b) ((a>b)?a:b)
 #define mymin(a,b) ((a<b)?a:b)
@@ -43,7 +43,7 @@ using namespace Eigen;
 #define frhouuid 1
 #define frhovid 2
 #define frhouhtid 3
-
+#define neq 4
 
 // CREATE STRUCTURE DEFINITION
 struct constants
@@ -51,7 +51,6 @@ struct constants
   double p0;
   double T0;
   double A_t;
-  bool cond; //0 for subsonic vs //1 for
   double tol;
   double gamma;
   bool outflow;
@@ -67,10 +66,17 @@ void quasi1Dnozzle(constants C);
 
 // Function File
 double A_x(double x);
+
 double M_xinitial(double x);
+
+double dAdx(double x);
+
 void set_geometry(MatrixXd& xcenter, MatrixXd& xinterface);   
+
 void initialize(MatrixXd* V, MatrixXd &Mc, constants &C);
+
 double compute_soundspeed( double gamma,  double p, double rho);
+
 void Mtoprim(double& V1, double& V2, double& V3, double& V4, 
     double& M, constants& C);
 
@@ -79,6 +85,7 @@ double compute_soundspeed(double gamma, double p, double rho);
 void extrapolate_to_ghost(MatrixXd* Varr);
 
 void set_boundary_conditions( MatrixXd* V, constants C);
+
 void inflow_boundary_condition(MatrixXd* V, constants C);
 
 void outflow_boundary_condition(MatrixXd* V, constants C);
@@ -92,6 +99,23 @@ void reconstruct(MatrixXd* Uinterface, MatrixXd& Lambda_minterface,
 
 void compute_F_flux(MatrixXd* F, MatrixXd* U, constants C);
 
+void artificial_viscosity(MatrixXd* d, MatrixXd* V, 
+    MatrixXd* U, MatrixXd& Lambda_minterface);
 
+void compute_nu(MatrixXd& nu, MatrixXd* V);
+
+void compute_source(MatrixXd* S, MatrixXd* V, MatrixXd& xc);
+
+void compute_residual(MatrixXd* Res, MatrixXd* S, MatrixXd* F,
+    MatrixXd* d, MatrixXd& Ai);
+
+void iteration(MatrixXd* U, MatrixXd* Res, MatrixXd& Ac, 
+    MatrixXd& Lambda_mcenter, constants C);
+
+void constoprim(MatrixXd* V, MatrixXd* U, constants C);
+
+void exactsol(MatrixXd* V, MatrixXd& Ac, constants C);
+
+void isentropic_exact(constants C);
 #endif
 

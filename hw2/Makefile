@@ -26,7 +26,7 @@ LIBS = -lm
 	$(CC) $(CFLAGS) -o $*.o -c $*.cpp
 
 # list of objects to be compiled
-#OBJS    = \
+OBJS2    = \
 	src/nozzle_m.o\
 	src/nozzle_f.o
 
@@ -43,9 +43,17 @@ TESTS = \
 	test/testv2.o
 
 
+
 main:$(OBJS) 
 	$(LD)  $(LDFLAGS) -o main $(OBJS) $(LIBS)
 	rm -r $(OBJS)
+
+
+mainv1:$(OBJS2) 
+	$(LD)  $(LDFLAGS) -o mainv1 $(OBJS2) $(LIBS)
+	rm -r $(OBJS2)
+
+
 
 tests:$(TESTS)
 	$(LD)  $(LDFLAGS) -o unittest $(TESTS) $(LIBS)

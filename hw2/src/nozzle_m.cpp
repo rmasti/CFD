@@ -92,7 +92,7 @@ void quasi1Dnozzle(constants C)
   ////////////////////////// MAIN TIME LOOP ///////////////////////////
   //choose iterator n to be time evolution and iterate until convergence 
   //or until maximum iterations have been reached
-  for (int n=0; n < nmax; n++)
+  for (int n=0; n < 2; n++)
   {
     //initialize a flux vector to be filled only on interior cells
     vector<fluxes> Farr; 
@@ -116,7 +116,7 @@ void quasi1Dnozzle(constants C)
 
     //Write out the solution after ever __ number of time steps (currently 5000)
     if (n % 500 == 0){
-      cout <<"n = " << n <<  " RES: " << L2norm[0]/Normold[0] <<  " " << L2norm[1]/Normold[1] << " " << L2norm[2]/Normold[2] << endl;
+      //cout <<"n = " << n <<  " RES: " << L2norm[0]/Normold[0] <<  " " << L2norm[1]/Normold[1] << " " << L2norm[2]/Normold[2] << endl;
       FILE *ftemp;
       //Create necessary header for tecplot
       std::ostringstream ss;
@@ -153,7 +153,7 @@ void quasi1Dnozzle(constants C)
     
     if( L2norm[0]/Normold[0] < C.tol && L2norm[1]/Normold[1] < C.tol && L2norm[2]/Normold[2] < C.tol)
     {
-      cout<<"CONVERGENCE CRITERIA MET: in n = "<<n<<" iterations"<<endl;
+      //cout<<"CONVERGENCE CRITERIA MET: in n = "<<n<<" iterations"<<endl;
       if (C.outflow == true) 
       {
         write_out(fp2, Aarr, X_center, Unew, C);
