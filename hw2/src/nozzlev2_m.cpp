@@ -26,7 +26,7 @@ int main()
   consts.p0 = 300.0*1000.0; //Pa
   consts.T0 = 600.0; //Kelvin
   consts.A_t = A_x(0.0);//should be m^2
-  consts.tol = 1.0e-14; //convergence tolerance 
+  consts.tol = 1.0e-12; //convergence tolerance 
   consts.gamma = 1.4; 
   consts.outflow = true; //True is supersonic outflow
   consts.cfl = 0.1; //cfl is 0.1 but can be changed after a certain number of iterations
@@ -39,11 +39,11 @@ int main()
   //fclose(fp1);// Close the exact solution file
 
   ////////// SUPERSONIC ///////////
-  quasi1Dnozzle(consts); // Run with supersonic outflow
+  //quasi1Dnozzle(consts); // Run with supersonic outflow
   ////////// SUBSONIC ///////////
   consts.pb = 120.00*1000.0; //Pa
   consts.outflow = false;
-  //quasi1Dnozzle(consts); // Run with subsonic outflow
+  quasi1Dnozzle(consts); // Run with subsonic outflow
   cout << "Done see data directory" << endl;// Identify that all simulations have finished
   return 0;
 }
@@ -90,6 +90,7 @@ void quasi1Dnozzle(constants C)
 
   //initialize primitive variable extrapolate and then apply B.C's;
   initialize(V, Mc, C);
+  //cout << setprecision(14) << V[rhoid].transpose() << endl;
 
   double L2normold1 = 10.0;
   double L2normold2 = 10.0;
@@ -97,13 +98,24 @@ void quasi1Dnozzle(constants C)
   double L2normold4 = 10.0;
 
   ///////////////// MAIN LOOP ////////////////
-  for(int n= 0 ;  n<3; n++)
+  for(int n= 0 ;  n < nmax; n++)
   {
+    //cout << " n= " << n << endl;
+
+    
     //extrapolate the interior cells to the ghost cells
     extrapolate_to_ghost(V);
+    //primtocons(U,V,C);
+    //extrapolate_to_ghost(U);
+    //constoprim(V, U, C);
 
+    //cout << setprecision(14) << U[rhoid].transpose() << endl;
+
+    
     //Apply Boundary Conditions
     set_boundary_conditions(V, C);
+    //cout << "after " << endl;
+    //cout << setprecision(14) << V[pid].transpose() << endl;
 
     //Find lambdamax at cell centers
     MatrixXd Lambda_mcenter(1, number_of_cells);
@@ -111,6 +123,7 @@ void quasi1Dnozzle(constants C)
 
     //After extrap and boundary convert V to U
     primtocons(U, V, C);
+//    cout << setprecision(14) << V[rhoid].transpose() << endl;
 
     //Reconstruct to find Uinterface and lambdainterface
     MatrixXd Lambda_minterface(1, N+1);//ONLY AT INTERFACES OF INTEREST
@@ -123,9 +136,7 @@ void quasi1Dnozzle(constants C)
     //Find the artificial viscosity flux d
     artificial_viscosity(d, V, U, Lambda_minterface);
     //cout << setprecision(14) << V[rhoid].transpose() << endl;
-
-
-    //cout << setprecision(14) << d[frhouuid].transpose() << endl;
+    //cout << setprecision(14) << d[frhouid].transpose() << endl;
 
     //compute the S source term on the domain
     compute_source(S, V, xc);
@@ -136,15 +147,17 @@ void quasi1Dnozzle(constants C)
     compute_residual(Res, S, F, d, Ai);
     //cout << setprecision(14) << Res[rhoid].transpose() << endl;
 
-
-
     //cout << setprecision(14) << U[rhoid].transpose() << endl;
 
     //Execute 1 time iteration
     iteration(U, Res, Ac, Lambda_mcenter, C);
 
     //Update the primitive variables with the new U
+
     constoprim(V, U, C);
+    //cout << setprecision(14) << V[pid].transpose() << endl;
+    //cout << "after " << endl;
+    //cout << setprecision(14) << V[pid].transpose() << endl;
 
     MatrixXd temp = Res[rhoid].cwiseProduct(Res[rhoid]);
     double L2norm1 = sqrt(temp.sum()/N)/L2normold1;
@@ -161,17 +174,21 @@ void quasi1Dnozzle(constants C)
       L2normold3 = L2norm3;
       L2normold4 = L2norm4;
     }
-    if (L2norm1 < C.tol && L2norm2 < C.tol && L2norm3 < C.tol && L2norm4 < C.tol)
+    if (L2norm1 < C.tol && L2norm2 < C.tol &&  L2norm4 < C.tol)
     {
+      cout << U[rhoid].transpose() << endl;
       cout << "CONVERGENCE CRITERIA MET" << endl;
       break;
     }
 
-    /*cout << "n = " << n <<  " L2norm: rho= " << L2norm1
+    if (std::isnan(L2norm1)) exit(1);
+   /* 
+    cout << "n = " << n <<  " L2norm: rho= " << L2norm1
       << " rhou= " << L2norm2      
       << " rhov= " << L2norm3
       <<" rhoet= "<< L2norm4 << endl;
       */
+      
   }
   //cout << "quasi soln:" << endl;
   //cout << U[rhouid].transpose() << endl;

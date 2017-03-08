@@ -125,7 +125,17 @@ void iteration_step(
     // energy
     Unew[i].rhoet = Uold[i].rhoet - dt*inv_volume*(F[i_interior+1].rhouht*ALR[1] - F[i_interior].rhouht*ALR[0]);
 
-    cout << setprecision(14) << S*dx + (F[i_interior+1].rhouu_and_p*ALR[1] - F[i_interior].rhouu_and_p*ALR[0]) << endl;
+
+    //cout << setprecision(14) << Uold[i].rho<< endl;
+
+
+    //cout << setprecision(14) << -S*dx + (F[i_interior+1].rhouu_and_p*ALR[1] - F[i_interior].rhouu_and_p*ALR[0]) << endl;
+
+    cout << setprecision(14) << (F[i_interior+1].rhou*ALR[1] - F[i_interior].rhou*ALR[0]) << endl;
+
+    //cout << setprecision(14) << (F[i_interior+1].rhouht*ALR[1] - F[i_interior].rhouht*ALR[0]) << endl;
+
+    //cout << setprecision(14) << F[i_interior+1].rhouu_and_p << endl;
 
     // Fill the residual array
     // continuity
@@ -154,7 +164,6 @@ double compute_volume(vector<double> &ALR, vector<double> const &Xarr, int i)
   double Aavg = 0.5*(Aleft+Aright);
   ALR[0] = Aleft;
   ALR[1] = Aright;
-  //return fabs(xright-xleft)*Aavg;
   return dx*A_x(xleft+dx/2);
 }
 
@@ -188,7 +197,7 @@ void compute_fluxes(
     F[i].rhouu_and_p = F[i].rhouu_and_p + dvec[i].rhouu_and_p;
     F[i].rhouht = F[i].rhouht + dvec[i].rhouht;
 
-    //cout << setprecision(14) <<  dvec[i].rhouu_and_p << endl;
+    //cout << setprecision(14) <<  dvec[i].rhou << endl;
     //cout << "flux cont rhou = " << F[i].rhou << " rhouu = " <<  F[i].rhouu_and_p << " rhouht = "<< F[i].rhouht << endl;
     if (isnan(F[i].rhou) || isnan(F[i].rhouu_and_p) || isnan(F[i].rhouht))
     {
@@ -274,6 +283,7 @@ void artificial_viscosity(
     
     //cout<< setprecision(14) << "nu  " << nu[0] << " "<<  nu[1] << " "<<  nu[2] << " "<<  nu[3] << " "<<  endl; 
 
+    //cout << setprecision(14)<< numax << endl;
     // Find the epsilon values
     double epsilon2 = kappa2*numax;
     double epsilon4 = mymax(0.0, kappa4-epsilon2);
@@ -358,6 +368,9 @@ void extrapolate_to_ghost(
     Uarr[iright+1].rhou = (2.0*Uarr[iright].rhou - Uarr[iright-1].rhou);
     Uarr[iright+1].rhov = (2.0*Uarr[iright].rhov - Uarr[iright-1].rhov);
     Uarr[iright+1].rhoet = (2.0*Uarr[iright].rhoet - Uarr[iright-1].rhoet);
+
+    //cout << setprecision(14) << Uarr[ileft-1].rho << " " << Uarr[iright+1].rho << endl;
+    //cout << " ir= " << iright << " ileft= " << ileft << endl;
   }
 }
 
@@ -450,7 +463,11 @@ void initialize(
     )
 {
   //loop over mach values defined at centers
-  for(int i = 0; i < M.size(); i++) U.push_back(primtocons(Mtoprim(M[i], C), C));
+  for(int i = 0; i < M.size(); i++)
+  {
+    U.push_back(primtocons(Mtoprim(M[i], C), C));
+    //cout << setprecision(14) << U.back().rho << endl;
+  }
 }
 
 double A_x(double x)

@@ -92,7 +92,7 @@ void quasi1Dnozzle(constants C)
   ////////////////////////// MAIN TIME LOOP ///////////////////////////
   //choose iterator n to be time evolution and iterate until convergence 
   //or until maximum iterations have been reached
-  for (int n=0; n < 2; n++)
+  for (int n=0; n < 9; n++)
   {
     //initialize a flux vector to be filled only on interior cells
     vector<fluxes> Farr; 
@@ -113,6 +113,9 @@ void quasi1Dnozzle(constants C)
     Res1.push_back(L2norm[0]/Normold[0]);
     Res2.push_back(L2norm[1]/Normold[1]);
     Res3.push_back(L2norm[2]/Normold[2]);
+
+
+    cout << " n= " << n << endl;
 
     //Write out the solution after ever __ number of time steps (currently 5000)
     if (n % 500 == 0){

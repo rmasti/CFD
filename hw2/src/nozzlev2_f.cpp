@@ -23,7 +23,6 @@ void constoprim(
       0.5*V[rhoid].cwiseProduct(V[uid].cwiseProduct(V[uid])) -
       0.5*V[rhoid].cwiseProduct(V[vid].cwiseProduct(V[vid]))); // "rhov/rho"
 }
-
 void iteration(
     //takes a time step iteration over the interior domain only!!!!!
     MatrixXd* U,                       //output - Updates Conserved Variable
@@ -38,18 +37,14 @@ void iteration(
   double dt = dtvec.minCoeff();//grab the minimum value of the matrix 
   //cout<< setprecision(14) << dt << endl; 
   int row = 0;
+  //cout << setprecision(14) << Res[rhoid].transpose() << endl;
   for(int i = 0 ; i < Res[rhoid].cols(); i++)
   {
     int i_cells = num_ghost_cells+i;//i_cells 3->13 
-    //U1
-    U[rhoid](row, i_cells) = U[rhoid](row,i_cells) - (dt/vol(row,i_cells))*Res[rhoid](row,i);
-    //U2
-    U[rhouid](row, i_cells) = U[rhouid](row,i_cells) - (dt/vol(row,i_cells))*Res[rhouid](row,i);
-    //U3
-    U[rhovid](row, i_cells) = U[rhovid](row,i_cells) - (dt/vol(row,i_cells))*Res[rhovid](row,i);
-    //U4
-    U[rhoetid](row, i_cells) = U[rhoetid](row,i_cells) - (dt/vol(row,i_cells))*Res[rhoetid](row,i);
-    //cout<< setprecision(14) << dt << endl;
+    for(int eq=0; eq < neq; eq++)
+    {
+      U[eq](row, i_cells) = U[eq](row,i_cells) - (dt/vol(row,i_cells))*Res[eq](row,i);
+    }
   }
 }
 
@@ -65,19 +60,15 @@ void compute_residual(
   for(int i = 0; i < Res[rhoid].cols(); i++)
   {
     int i_int = num_ghost_cells + i; //for area vector
-    //U1 resid
-    Res[rhoid](row,i) = (F[frhouid](row,i+1) + d[frhouid](row,i+1))*Ai(row,i_int+1) -  
-      (F[frhouid](row,i) + d[frhouid](row,i))*Ai(row,i_int) - dx*S[rhoid](row,i);
-    //U2 resid
-    Res[rhouid](row,i) = (F[frhouuid](row,i+1) + d[frhouuid](row,i+1))*Ai(row,i_int+1) -  
-      (F[frhouuid](row,i) + d[frhouuid](row,i))*Ai(row,i_int) - dx*S[rhouid](row,i);
-    //U3 resid 
-    Res[rhovid](row,i) = (F[frhovid](row,i+1) + d[frhovid](row,i+1))*Ai(row,i_int+1) -  
-      (F[frhovid](row,i) + d[frhovid](row,i))*Ai(row,i_int) - dx*S[rhovid](row,i);
-    //U4 resid
-    Res[rhoetid](row,i) = (F[frhouhtid](row,i+1) + d[frhouhtid](row,i+1))*Ai(row,i_int+1) -  
-      (F[frhouhtid](row,i) + d[frhouhtid](row,i))*Ai(row,i_int) - dx*S[rhoetid](row,i);
-    cout << setprecision(14) << Res[rhouid](row,i) << endl;
+    for(int eq=0; eq < neq; eq++)
+    {
+      Res[eq](row,i) = (F[eq](row,i+1) + d[eq](row,i+1))*Ai(row,i_int+1) -  
+        (F[eq](row,i) + d[eq](row,i))*Ai(row,i_int) - dx*S[eq](row,i);
+    }
+    //cout << setprecision(14) << Res[rhouid](row,i) << endl;
+    //cout << setprecision(14) << Res[rhoetid](row,i) << endl;
+    //cout << setprecision(14) << Res[rhoid](row,i) << endl;
+    //cout << setprecision(14) << F[frhouuid](row,i+1) + d[frhouuid](row,i+1) << endl;
   }
 }
 
@@ -103,10 +94,13 @@ void compute_nu(
     MatrixXd* V)                        //input - V for the pressures
 {
   int row=0;
+  nu(row,0) = 0.0;
+  nu(row,nu.cols()-1) = 0.0;
   for(int i = 1; i < nu.cols()-1; i++)
   {
     nu(row,i) = abs((V[pid](row,i+1) - 2.0*V[pid](row,i) + V[pid](row,i-1)))/
       (V[pid](row,i+1) + 2.0*V[pid](row,i) + V[pid](row,i-1));
+    //cout << nu(row,i)<< endl;
   }
 }
 void artificial_viscosity(
@@ -116,59 +110,55 @@ void artificial_viscosity(
     MatrixXd* U,                         //input - Cons var for D1 and D3
     MatrixXd& Lambda_minterface)         //input - Lambda max at interfaces of interest
 {
-
   int row = 0;
+  // Fill the nu values only needed for art visc
+  // NOTE that it is the same size as the V vectors
+  // because they can use the same index in the loop below
+  // nu is filled from 2 -> N+2*numghost-2
   MatrixXd nu(1,N+2*num_ghost_cells);
-  compute_nu(nu, V);// fill in nu with all the center values needed for 
+  compute_nu(nu, V);
+  
+ 
+  // Loop over the lambda of interest values
   for(int i = 0; i < Lambda_minterface.cols(); i++)
   {
-    int i_cells = (num_ghost_cells-1) + i; //i_cells is for N+2*ghost matrices
+    int i_cells = (num_ghost_cells-1) + i; //i_cells starts at 2 - > N+ghost 
     // Find the maximum nu->epsion2, and epsion 4
     double epsilon2 = kappa2*mymax(
         mymax(nu(row,i_cells-1),nu(row,i_cells)),
         mymax(nu(row,i_cells+1),nu(row,i_cells+2)));
+    
     double epsilon4 = mymax(0, (kappa4 - epsilon2));
-
-
     // write lam for brevity in the long calcs
     double lam = Lambda_minterface(row,i);
 
-    // Compute D1 using epsilon2
-    double D1rhou = lam*epsilon2*(U[rhoid](row,i_cells+1) - U[rhoid](row,i_cells));
-    double D1rhouu = lam*epsilon2*(U[rhouid](row,i_cells+1) - U[rhouid](row,i_cells));
-    double D1rhov = lam*epsilon2*(U[rhovid](row,i_cells+1) - U[rhovid](row,i_cells));
-    double D1rhouht = lam*epsilon2*(U[rhoetid](row,i_cells+1) - U[rhoetid](row,i_cells));
-
-    // Compute D3 using epsilon4
-    double D3rhou = lam*epsilon4*(U[rhoid](row,i_cells+2) - 3.0*U[rhoid](row,i_cells+1)+
-        3.0*U[rhoid](row,i_cells) - U[rhoid](row,i_cells-1));
-    double D3rhouu = lam*epsilon4*(U[rhouid](row,i_cells+2) - 3.0*U[rhouid](row,i_cells+1)+
-        3.0*U[rhouid](row,i_cells) - U[rhouid](row,i_cells-1));
-    double D3rhov = lam*epsilon4*(U[rhovid](row,i_cells+2) - 3.0*U[rhovid](row,i_cells+1)+
-        3.0*U[rhovid](row,i_cells) - U[rhovid](row,i_cells-1));
-    double D3rhouht = lam*epsilon4*(U[rhoetid](row,i_cells+2) - 3.0*U[rhoetid](row,i_cells+1)+
-        3.0*U[rhoetid](row,i_cells) - U[rhoetid](row,i_cells-1));
-
-    d[frhouid](row,i) = D3rhou - D1rhou;
-    d[frhouuid](row,i) = D3rhouu - D1rhouu;
-    d[frhovid](row,i) = D3rhov - D1rhov;
-    d[frhouhtid](row,i) = D3rhouht - D1rhouht;
+    // Compute D1 D3 and d
+    MatrixXd D1(1,neq);
+    MatrixXd D3(1,neq);
+    for(int eq = 0; eq < neq ; eq++)
+    {
+      D1(row,eq) = lam*epsilon2*(U[eq](row,i_cells+1) - U[eq](row,i_cells));
+      D3(row,eq) = lam*epsilon4*(U[eq](row,i_cells+2) - 3.0*U[eq](row,i_cells+1)+
+        3.0*U[eq](row,i_cells) - U[eq](row,i_cells-1));
+      //combine D3 and D1
+      d[eq](row,i) = D3(row,eq) - D1(row,eq);
+    }
   }
 }
 void compute_F_flux(
     //This function takes in the U values at all the interfaces of interest and converts them to
     //the flux F
     MatrixXd* F,                                    //output - Flux from Uint
-    MatrixXd* U,                                    //input - U at i+1/2 for domain of Interest
+    MatrixXd* Uinterface,                           //input - U at i+1/2 for domain of Interest
     constants C)                                    //input - constants for conversion
 {
   int row = 0;
-  for (int i=0; i < U[rhoid].cols(); i++)
+  for (int i=0; i < Uinterface[rhoid].cols(); i++)
   {
-    double rho = U[rhoid](row,i);
-    double rhou = U[rhouid](row,i);
-    double rhov = U[rhovid](row,i);
-    double rhoet = U[rhoetid](row,i);
+    double rho = Uinterface[rhoid](row,i);
+    double rhou = Uinterface[rhouid](row,i);
+    double rhov = Uinterface[rhovid](row,i);
+    double rhoet = Uinterface[rhoetid](row,i);
 
     //compute first element rho*u
     F[frhouid](row,i) = rhou; //first element is rhou
@@ -182,7 +172,7 @@ void compute_F_flux(
 
     //compute fourth element rho*u*ht
     F[frhouhtid](row,i) = (rhoet*rhou/rho) + (rhou/rho)*
-      (C.gamma - 1.0)*(rhoet - 0.5*rhou*rhou/rho - 0.5*rhov*rhov/rho);//fourth element is rhouht
+      (C.gamma - 1.0)*(rhoet - 0.5*rhou*rhou/rho);//fourth element is rhouht
   }
 }
 
@@ -230,8 +220,8 @@ void primtocons(
   U[rhouid] = V[rhoid].cwiseProduct(V[uid]); //U2 = rhou = V1*V2
   U[rhovid] = V[rhoid].cwiseProduct(V[vid]); //U3 = rhov = V1*V3
   //Compute energy U4 = V4/(gamma-1.0) + 0.5*V1*V2*V2 + 0.5*V1*V3*V3
-  U[rhoetid] = V[pid]/(C.gamma - 1.0) + 0.5*V[rhoid].cwiseProduct(V[uid].cwiseProduct(V[uid])) +
-    0.5*V[rhoid].cwiseProduct(V[vid].cwiseProduct(V[vid]));
+  U[rhoetid] = V[pid]/(C.gamma - 1.0) 
+    + 0.5*V[rhoid].cwiseProduct(V[uid].cwiseProduct(V[uid]));
 }
 
 void outflow_boundary_condition(
@@ -247,9 +237,12 @@ void outflow_boundary_condition(
     double P_left = V[pid](row, end-num_ghost_cells); //last interior cell
     for(int i = N+num_ghost_cells; i < V[pid].cols() ;i++)
     {
-      V[pid](row, i) = 2.0*P_middle - P_left;
+
+      V[pid](row, i) = C.pb;
+      //V[pid](row, i) = 2.0*P_middle - P_left;
       P_left = V[pid](row, i-1);
       P_middle = V[pid](row, i); 
+      //P_middle = C.pb; 
     }
   }
 }
@@ -266,13 +259,13 @@ void inflow_boundary_condition(
   //NEED TO extrapolate mach number from the interior out to the ghost cells
   for(int i=0; i< num_ghost_cells; i++)
   {
-    int ib = (num_ghost_cells - 1) - i; 
     M_0 = 2.0*M_1 - M_2;
     if (M_0 < 0.001){
       M_0 = 0.001;
       cout << "Positivity Preserving Activated!!!" << endl;
     }
     //now with the mach number apply Mto prims with the P0 and T0 specified
+    int ib = (num_ghost_cells - 1) - i; 
     Mtoprim(V[rhoid](row,ib), V[uid](row,ib), V[vid](row,ib), V[pid](row,ib), M_0, C);
     M_2 = M_1;
     M_1 = M_0;
@@ -297,18 +290,13 @@ void extrapolate_to_ghost(MatrixXd* Varr)
   {
     int ileft = num_ghost_cells - i; //Start at the 1st interior cell and extrap to ghost
     int iright = (end - num_ghost_cells) + i;//Find the last interior cell
-
-    // Left extrap
-    Varr[rhoid](row, ileft-1) = 2.0*Varr[rhoid](row, ileft) - Varr[rhoid](row, ileft+1);//rho
-    Varr[uid](row, ileft-1) = 2.0*Varr[uid](row, ileft) - Varr[uid](row, ileft+1);//u
-    Varr[vid](row, ileft-1) = 2.0*Varr[vid](row, ileft) - Varr[vid](row, ileft+1);//v
-    Varr[pid](row, ileft-1) = 2.0*Varr[pid](row, ileft) - Varr[pid](row, ileft+1);//p
-
-    // Right extrap
-    Varr[rhoid](row, iright+1) = 2.0*Varr[rhoid](row, iright) - Varr[rhoid](row, iright-1);//rho
-    Varr[uid](row, iright+1) = 2.0*Varr[uid](row, iright) - Varr[uid](row, iright-1);//u
-    Varr[vid](row, iright+1) = 2.0*Varr[vid](row, iright) - Varr[vid](row, iright-1);//v
-    Varr[pid](row, iright+1) = 2.0*Varr[pid](row, iright) - Varr[pid](row, iright-1);//p
+    for(int eq=0; eq < neq; eq++)
+    {
+      // Left extrap
+      Varr[eq](row, ileft-1) = 2.0*Varr[eq](row, ileft) - Varr[eq](row, ileft+1);//rho
+      // Right extrap
+      Varr[eq](row, iright+1) = 2.0*Varr[eq](row, iright) - Varr[eq](row, iright-1);//rho
+    }
   }
 }
 
@@ -320,17 +308,12 @@ void initialize(
     constants &C)                           //input - Constants is passed for conversions
 {
   //Define values used as inputs for the Mtoprim function
-  double M; double V1; double V2; double V3; double V4;
   for (int row=0; row < Mc.rows(); row++) 
   {
     for(int col = 0; col < Mc.cols(); col++)
     {
-      M = Mc(row,col);  //Assign M to the current mach number
-      Mtoprim(V1,V2,V3,V4,M,C);// fill in V1-4
-      V[rhoid](row,col) = V1;//rho 
-      V[uid](row,col) = V2;//u
-      V[vid](row,col) = V3;//v 
-      V[pid](row,col) = V4;//p 
+      Mtoprim(V[rhoid](row,col), V[uid](row,col),
+          V[vid](row,col), V[pid](row,col), Mc(row,col), C);// fill in V1-4
     }
   }
 }

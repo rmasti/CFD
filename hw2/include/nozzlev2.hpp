@@ -17,7 +17,7 @@
 using namespace std;
 using namespace Eigen;
 
-#define N 10
+#define N 64
 #define xmax 1.5
 #define xmin -1.5
 #define xmax_dom 1.0
