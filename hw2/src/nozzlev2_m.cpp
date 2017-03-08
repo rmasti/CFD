@@ -15,10 +15,7 @@ FILE *fp5; //Residuals norms subsonic
 int main()
 {
 
-  //Choose which data you wish to generate:
-  //isentropic exact soln
-  //isentropic fvm
-  //shock fvm
+  output_file_headers();//This prints out the output file headers which can be modified at the bottom of this file.
 
   ////////////////// Set local constants for the simulation //////////////////
   //Different from the global constants defined in the header file
@@ -31,19 +28,17 @@ int main()
   consts.outflow = true; //True is supersonic outflow
   consts.cfl = 0.1; //cfl is 0.1 but can be changed after a certain number of iterations
 
-  output_file_headers();//This prints out the output file headers which can be modified at the bottom of this file.
-  //////////////////////// RUN THE SIMULATIONS ////////////////////////////
+  //////////////////////// START of SIMULATIONS ////////////////////////////
   //This main file is kept purposely really short and it just tells these two files to run their respective sims (exact solution, supersonic outflow, and TBD subsonic function
-
+  
   isentropic_exact(consts);// Pass the constants to isentropic exact and isentropic 
-  //fclose(fp1);// Close the exact solution file
+  quasi1Dnozzle(consts); // Run with supersonic outflow
 
-  ////////// SUPERSONIC ///////////
-  //quasi1Dnozzle(consts); // Run with supersonic outflow
-  ////////// SUBSONIC ///////////
   consts.pb = 120.00*1000.0; //Pa
-  consts.outflow = false;
+  consts.outflow = false; //subsonic outflow condition
   quasi1Dnozzle(consts); // Run with subsonic outflow
+  //////////////////////// END of SIMULATIONS ////////////////////////////
+  
   cout << "Done see data directory" << endl;// Identify that all simulations have finished
   return 0;
 }
@@ -90,122 +85,121 @@ void quasi1Dnozzle(constants C)
 
   //initialize primitive variable extrapolate and then apply B.C's;
   initialize(V, Mc, C);
-  //cout << setprecision(14) << V[rhoid].transpose() << endl;
 
+  ///////////////// MAIN LOOP ////////////////
+  double t = 0.0;
   double L2normold1 = 10.0;
   double L2normold2 = 10.0;
   double L2normold3 = 10.0;
   double L2normold4 = 10.0;
-
-  ///////////////// MAIN LOOP ////////////////
   for(int n= 0 ;  n < nmax; n++)
   {
-    //cout << " n= " << n << endl;
-
-    
+    // Beginning of Iteration Loop
     //extrapolate the interior cells to the ghost cells
     extrapolate_to_ghost(V);
-    //primtocons(U,V,C);
-    //extrapolate_to_ghost(U);
-    //constoprim(V, U, C);
 
-    //cout << setprecision(14) << U[rhoid].transpose() << endl;
-
-    
     //Apply Boundary Conditions
     set_boundary_conditions(V, C);
-    //cout << "after " << endl;
-    //cout << setprecision(14) << V[pid].transpose() << endl;
-
+   
     //Find lambdamax at cell centers
     MatrixXd Lambda_mcenter(1, number_of_cells);
     compute_lambda(Lambda_mcenter, V, C);
-
+   
     //After extrap and boundary convert V to U
     primtocons(U, V, C);
-//    cout << setprecision(14) << V[rhoid].transpose() << endl;
-
+   
     //Reconstruct to find Uinterface and lambdainterface
     MatrixXd Lambda_minterface(1, N+1);//ONLY AT INTERFACES OF INTEREST
     reconstruct(Uinterface, Lambda_minterface, U, Lambda_mcenter);
 
     //Now with reconstructed values compute flux
     compute_F_flux(F, Uinterface, C);
-    //cout << setprecision(14) << F[frhouid].transpose() << endl;
 
     //Find the artificial viscosity flux d
     artificial_viscosity(d, V, U, Lambda_minterface);
-    //cout << setprecision(14) << V[rhoid].transpose() << endl;
-    //cout << setprecision(14) << d[frhouid].transpose() << endl;
 
     //compute the S source term on the domain
     compute_source(S, V, xc);
-    //cout << setprecision(14) << S[rhouid].transpose() << endl;
 
     //NOTE Ai is defined at every interface including ghost cells!!
     //Compute residuals to be used in norms and for completing a step
     compute_residual(Res, S, F, d, Ai);
-    //cout << setprecision(14) << Res[rhoid].transpose() << endl;
 
-    //cout << setprecision(14) << U[rhoid].transpose() << endl;
-
-    //Execute 1 time iteration
-    iteration(U, Res, Ac, Lambda_mcenter, C);
-
+    //Execute 1 time iteration 
+    double timestep;
+    iteration(U, timestep, Res, Ac, Lambda_mcenter, C);
+    t+=timestep;
     //Update the primitive variables with the new U
-
     constoprim(V, U, C);
-    //cout << setprecision(14) << V[pid].transpose() << endl;
-    //cout << "after " << endl;
-    //cout << setprecision(14) << V[pid].transpose() << endl;
+    // End of Iteration Loop
 
-    MatrixXd temp = Res[rhoid].cwiseProduct(Res[rhoid]);
-    double L2norm1 = sqrt(temp.sum()/N)/L2normold1;
-    temp = Res[rhouid].cwiseProduct(Res[rhouid]);
-    double L2norm2 = sqrt(temp.sum()/N)/L2normold2;
-    temp = Res[rhovid].cwiseProduct(Res[rhovid]);
-    double L2norm3 = sqrt(temp.sum()/N)+10.0;
-    temp = Res[rhoetid].cwiseProduct(Res[rhoetid]);
-    double L2norm4 = sqrt(temp.sum()/N)/L2normold4;
+    /////////////// OUTPUT SOLNS & RESIDUALS ///////////////
+    MatrixXd L2norm(1, neq);
+    MatrixXd L2normrel(1,neq);
+    compute_norms(L2norm, Res);
+    L2normrel(0,0) = L2norm(0,rhoid)/L2normold1;
+    L2normrel(0,1) = L2norm(0,uid)/L2normold2;
+    L2normrel(0,2) = L2norm(0,vid)*0.0;
+    L2normrel(0,3) = L2norm(0,pid)/L2normold4;
     if (n == 3)
     {
-      L2normold1 = L2norm1;
-      L2normold2 = L2norm2;
-      L2normold3 = L2norm3;
-      L2normold4 = L2norm4;
+      L2normold1 = L2norm(0,rhoid);
+      L2normold2 = L2norm(0,uid);
+      L2normold3 = L2norm(0,vid);
+      L2normold4 = L2norm(0,pid);
     }
-    if (L2norm1 < C.tol && L2norm2 < C.tol &&  L2norm4 < C.tol)
+    if (L2normrel(0,rhoid) < C.tol && L2normrel(0,uid) < C.tol &&  L2normrel(0,pid) < C.tol)
     {
-      cout << U[rhoid].transpose() << endl;
+      //OUTPUT THE SOLUTION
       cout << "CONVERGENCE CRITERIA MET" << endl;
+      //write out the final solution for subsonic and supersonic outflow
+      if (C.outflow == true)
+      {
+        //supersonic outflow
+        write_solution(fp2, xc, Ac, V, U, C);
+        fprintf(fp4, "%i %e %e %e %e %e\n", n, t, L2normrel(0,rhoid), 
+            L2normrel(0,uid), L2normrel(0,vid), L2normrel(0,pid));
+        fclose(fp2);// Close the exact solution file
+        fclose(fp4);// Close the residual history
+      }
+      else
+      {
+        //subsonic outflow
+        write_solution(fp3, xc, Ac, V, U, C);
+        fprintf(fp5, "%i %e %e %e %e %e\n", n, t, L2normrel(0,rhoid), 
+            L2normrel(0,uid), L2normrel(0,vid), L2normrel(0,pid));
+        fclose(fp3);// Close the exact solution file
+        fclose(fp5);
+      }
       break;
     }
-
-    if (std::isnan(L2norm1)) exit(1);
-   /* 
-    cout << "n = " << n <<  " L2norm: rho= " << L2norm1
-      << " rhou= " << L2norm2      
-      << " rhov= " << L2norm3
-      <<" rhoet= "<< L2norm4 << endl;
-      */
-      
+    if (n % 1000 == 0)
+    {
+      //OUTPUT RESIDUAL HISTORY
+      if (C.outflow == true)
+      {
+        //supersonic outflow
+        fprintf(fp4, "%i %e %e %e %e %e\n", n, t, L2normrel(0,rhoid), 
+            L2normrel(0,uid), L2normrel(0,vid), L2normrel(0,pid));
+      }
+      else
+      {
+        //subsonic outflow
+        fprintf(fp5, "%i %e %e %e %e %e\n", n, t, L2normrel(0,rhoid), 
+            L2normrel(0,uid), L2normrel(0,vid), L2normrel(0,pid));
+      }
+      cout << "n = " << n <<  " L2normrel: rho= " << L2normrel(0,0) << 
+        " rhou= " << L2normrel(0,1) << 
+        " rhov= " << L2normrel(0,2) <<
+        " rhoet= "<< L2normrel(0,3) << endl;
+    }
   }
-  //cout << "quasi soln:" << endl;
-  //cout << U[rhouid].transpose() << endl;
-  /*delete U; U = NULL;
-  delete V; V = NULL;
-  delete F; F = NULL;
-  delete Uinterface; Uinterface = NULL;
-  delete d; d = NULL;
-  delete S; S = NULL;
-  delete Res; Res = NULL;
-  */
+  //delete Res; Res = NULL;
 }
 
 
 void isentropic_exact(constants C)
 {
-
   int number_of_cells = N+2*num_ghost_cells;
   MatrixXd xc(1, N+2*num_ghost_cells);
   MatrixXd xi(1, N+2*num_ghost_cells+1);
@@ -216,175 +210,36 @@ void isentropic_exact(constants C)
     U[i].resize(1,number_of_cells);
     V[i].resize(1,number_of_cells);
   }
-
   set_geometry(xc, xi);//Fills in xc and xi
   MatrixXd Ac = xc.unaryExpr(&A_x);
   MatrixXd Mc = xc.unaryExpr(&M_xinitial);
-
-
   exactsol(V, Ac, C); //pass the datastruct and Area val to return all primary variables
   primtocons(U, V, C);
- 
-  //cout << "exact :" << endl;
-  //cout << U[rhouid].transpose() << endl;
-  
-//  write_out(fp1, Aarr, x, Uexact, C); //good
 
-//  delete U; U = NULL;
-//  delete V; V = NULL;
+  //OUTPUT EXACT SOLUTION 
+  write_solution(fp1, xc, Ac, V, U, C);
+  fclose(fp1);// Close the exact solution file
 }
 
-
-/*
-   vector<double> Res3;
-   double time=0.0;
-
-   double dt=0.0;
-////////////////////////// MAIN TIME LOOP ///////////////////////////
-//choose iterator n to be time evolution and iterate until convergence 
-//or until maximum iterations have been reached
-for (int n=0; n < nmax; n++)
-{
-//initialize a flux vector to be filled only on interior cells
-vector<fluxes> Farr; 
-//extrapolate from domain of interest to the ghost cells
-extrapolate_to_ghost(Uold, C);
-//After extrapolating values set the values at the outermost edge
-set_boundary_cond(Uold, C); //good here and up
-//After getting Uold ready for iteration compute fluxes 
-compute_fluxes(Farr, Uold, C);
-//Main iteration step 
-
-time += dt;
-iteration_step(Unew, Resarr, dt, Marr, Farr, Uold, X_center, X_interface, C);
-//With Resarr compute norms
-compute_norms(Linfnorm, L1norm, L2norm, Resarr); 
-t.push_back(time);
-nvec.push_back(n);
-Res1.push_back(L2norm[0]/Normold[0]);
-Res2.push_back(L2norm[1]/Normold[1]);
-Res3.push_back(L2norm[2]/Normold[2]);
-
-//Write out the solution after ever __ number of time steps (currently 5000)
-if (n % 500 == 0){
-cout <<"n = " << n <<  " RES: " << L2norm[0]/Normold[0] <<  " " << L2norm[1]/Normold[1] << " " << L2norm[2]/Normold[2] << endl;
-FILE *ftemp;
-//Create necessary header for tecplot
-std::ostringstream ss;
-if (C.outflow == true) //supersonic 
-{
-ss << "data/ss/q1Dnozzle_" << n << ".dat";
-ftemp = fopen(ss.str().c_str(), "w");
-fprintf(ftemp, "TITLE = \"Supesonic Outflow Exact Solution\"\n");  
-}
-else
-{
-ss << "data/sb/q1Dnozzle_" << n << ".dat";
-ftemp = fopen(ss.str().c_str(), "w");
-fprintf(ftemp, "TITLE = \"Subsonic Outflow Exact Solution\"\n"); 
-}
-fprintf(ftemp, "variables=\"x(m)\"\"Area(m^2)\"\"rho(kg/m^3)\"\"u(m/s)\"\"Press(kPa)\"\"Mach\"\"U1\"\"U2\"\"U3\"\n");
-fprintf(ftemp, "zone T=\"%i\"\n", n);
-fprintf(ftemp , "I=%i\n",N);
-fprintf(ftemp, "DATAPACKING=POINT\n");
-fprintf(ftemp, "DT = (DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE )\n");
-//fill in the file
-write_out(ftemp, Aarr, X_center,  Unew, C);
-//close the file
-fclose(ftemp);
-} 
-//fill in the old norms so that these can be tracked for convergence
-if (n==3)
-{
-Normold[0] = L2norm[0];
-Normold[1] = L2norm[1];
-Normold[2] = L2norm[2];
-}
-// convergence criteria
-
-if( L2norm[0]/Normold[0] < C.tol && L2norm[1]/Normold[1] < C.tol && L2norm[2]/Normold[2] < C.tol)
-{
-cout<<"CONVERGENCE CRITERIA MET: in n = "<<n<<" iterations"<<endl;
-if (C.outflow == true) 
-{
-  write_out(fp2, Aarr, X_center, Unew, C);
-  write_res(fp4, nvec, t, Res1, Res2, Res3);
-}
-else 
-{
-  write_out(fp3, Aarr, X_center, Unew, C); 
-  write_res(fp5, nvec, t, Res1, Res2, Res3);
-}
-break;
-}
-//update Uold with Unew
-Uold = Unew;
-}
-*/
-
-
-
-/*
-   void isentropic_exact(constants C)
-   {
-   vector<double> x(N); //array of x values 
-   vector<double> Aarr(N); //array of areas that will be passed to the rootfinder funct.
-   vector<prim_exact> prvparr(N); //Another data struct defined in header.
-   vector<consvar> Uexact(N);
-   for (int i = 0; i<N;i++)
-   {
-   if (i<N/2) C.cond = true; //use a subsonic initial M guess
-   else C.cond = false; //use a supersonic initial M guess
-   x[i] = xmin + (dx/2)*(i+1); //Evenly spaced x values
-   Aarr[i] = A_x(x[i]); //The area is defined in hw1_f.cpp
-   prvparr[i] = exactsol(Aarr[i],C); //pass the datastruct and Area val to return all primary variables
-   primvar Vtemp; 
-   Vtemp.rho = prvparr[i].rho;
-   Vtemp.u = prvparr[i].u;
-   Vtemp.p = prvparr[i].p; 
-   Uexact[i] = primtocons(Vtemp, C);
-   }
-   write_out(fp1, Aarr, x, Uexact, C); //good
-   }
-   */
-/****************************** FILE HANDLING **********************************/
 void output_file_headers()
 {
   fp1 = fopen("data/ss/exactsol.dat", "w");
-  fprintf(fp1, "TITLE = \"Isentropic Exact Solution\"\n");
-  fprintf(fp1, "variables=\"x(m)\"\"Area(m^2)\"\"rho(kg/m^3)\"\"u(m/s)\"\"Press(kPa)\"\"Mach\"\"U1\"\"U2\"\"U3\"\n");
-  fprintf(fp1 , "I=%i\n",N);
-  fprintf(fp1, "DATAPACKING=POINT\n");
-  fprintf(fp1, "DT = (DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE )\n");
+  fprintf(fp1, "Isentropic Exact Solution: I=%i\n", N);
+  fprintf(fp1, "x(m) Area(m^2) rho(kg/m^3) u(m/s) v(m/s) Press(Pa) Mach U1 U2 U3 U4\n");
 
-  fp2 = fopen("data/ss/q1Dnozzle_final.dat","w");
-  fprintf(fp2, "TITLE = \"Final Quasi-1D Nozzle Supersonic Solution\"\n");
-  fprintf(fp2, "variables=\"x(m)\"\"Area(m^2)\"\"rho(kg/m^3)\"\"u(m/s)\"\"Press(kPa)\"\"Mach\"\"U1\"\"U2\"\"U3\"\n");
-  fprintf(fp2 , "I=%i\n",N);
-  fprintf(fp2, "DATAPACKING=POINT\n");
-  fprintf(fp2, "DT = (DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE )\n");
+  fp2 = fopen("data/ss/q1Dnozzle.dat","w");
+  fprintf(fp2, "Final Quasi-1D Nozzle Supersonic Solution: I=%i\n",N);
+  fprintf(fp2, "x(m) Area(m^2) rho(kg/m^3) u(m/s) v(m/s) Press(kPa) Mach U1 U2 U3 U4\n");
 
-  fp3 = fopen("data/sb/q1Dnozzle_ss_final.dat","w");
-  fprintf(fp3, "TITLE = \"Final Quasi-1D Nozzle Subsonic Solution\"\n");
-  fprintf(fp3, "variables=\"x(m)\"\"Area(m^2)\"\"rho(kg/m^3)\"\"u(m/s)\"\"Press(kPa)\"\"Mach\"\"U1\"\"U2\"\"U3\"\n");
-  fprintf(fp3 , "I=%i\n",N);
-  fprintf(fp3, "DATAPACKING=POINT\n");
-  fprintf(fp3, "DT = (DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE )\n");
+  fp3 = fopen("data/sb/q1Dnozzle.dat","w");
+  fprintf(fp3, "Final Quasi-1D Nozzle Subsonic Solution: I=%i\n",N);
+  fprintf(fp3, "x(m) Area(m^2) rho(kg/m^3) u(m/s) v(m/s) Press(kPa) Mach U1 U2 U3 U4\n");
 
   fp4 = fopen("data/ss/q1Dhistory.dat","w");
-  fprintf(fp4, "TITLE = \"Quasi-1D Residual Supersonic History\"\n");
-  fprintf(fp4,"variables=\"Iteration\"\"Time(s)\"\"Res1\"\"Res2\"\"Res3\"\n");
-  fprintf(fp4, "DATAPACKING=POINT\n");
-  fprintf(fp4, "DT = (INTEGER DOUBLE DOUBLE DOUBLE DOUBLE)\n");
+  fprintf(fp4, "Quasi-1D Iterative Convergence Supersonic\n");
+  fprintf(fp4, "Iteration Time(s) L2norm1 L2norm2 L2norm3 L2norm4\n");
 
   fp5 = fopen("data/sb/q1Dhistory.dat","w");
-  fprintf(fp5, "TITLE = \"Quasi-1D Residual Subsonic History\"\n");
-  fprintf(fp5,"variables=\"Iteration\"\"Time(s)\"\"Res1\"\"Res2\"\"Res3\"\n");
-  fprintf(fp5, "DATAPACKING=POINT\n");
-  fprintf(fp5, "DT = (INTEGER DOUBLE DOUBLE DOUBLE DOUBLE)\n");
-
+  fprintf(fp5, "Quasi-1D Iterative Convergence Subsonic\n");
+  fprintf(fp5, "Iteration Time(s) L2norm1 L2norm2 L2norm3 L2norm4\n");
 }
-
-
-/***************************** END FILE HANDLING *******************************/
-

@@ -17,7 +17,7 @@
 using namespace std;
 using namespace Eigen;
 
-#define N 64
+#define N 256
 #define xmax 1.5
 #define xmin -1.5
 #define xmax_dom 1.0
@@ -61,8 +61,8 @@ struct constants
 ////////////// Function Prototypes ////////////////////
 // Main
 void output_file_headers();
-void quasi1Dnozzle(constants C);
 
+void quasi1Dnozzle(constants C);
 
 // Function File
 double A_x(double x);
@@ -109,13 +109,19 @@ void compute_source(MatrixXd* S, MatrixXd* V, MatrixXd& xc);
 void compute_residual(MatrixXd* Res, MatrixXd* S, MatrixXd* F,
     MatrixXd* d, MatrixXd& Ai);
 
-void iteration(MatrixXd* U, MatrixXd* Res, MatrixXd& Ac, 
-    MatrixXd& Lambda_mcenter, constants C);
+void iteration(MatrixXd* U, double& timestep, MatrixXd* Res, 
+    MatrixXd& Ac, MatrixXd& Lambda_mcenter, constants C);
 
 void constoprim(MatrixXd* V, MatrixXd* U, constants C);
 
 void exactsol(MatrixXd* V, MatrixXd& Ac, constants C);
 
 void isentropic_exact(constants C);
+
+void compute_norms(MatrixXd& L2norm, MatrixXd* Res);
+
+void write_solution(FILE* &file, MatrixXd& xc, MatrixXd& Ac,
+    MatrixXd* V, MatrixXd* U, constants C);
+
 #endif
 
