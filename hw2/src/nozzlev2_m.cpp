@@ -38,9 +38,11 @@ int main()
   consts.outflow = false; //subsonic outflow condition
   quasi1Dnozzle(consts); // Run with subsonic outflow
   //////////////////////// END of SIMULATIONS ////////////////////////////
-  
+ 
   cout << "Done see data directory" << endl;// Identify that all simulations have finished
+
   return 0;
+  
 }
 
 void quasi1Dnozzle(constants C)

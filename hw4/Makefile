@@ -1,7 +1,7 @@
 # define variables
 VPATH   = ./
-HDRDIR  = ./include ./Eigen
-LIBDIR	= ./lib  ./Eigen
+HDRDIR  = ./include ../Eigen
+LIBDIR	= ./lib  ../Eigen
 # adjust this for your system
 
 # set options for this machine
