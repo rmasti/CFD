@@ -26,34 +26,20 @@ LIBS = -lm
 	$(CC) $(CFLAGS) -o $*.o -c $*.cpp
 
 # list of objects to be compiled
-OBJS2    = \
-	src/nozzle_m.o\
-	src/nozzle_f.o
 
 OBJS = \
-       src/nozzlev2_m.o\
-       src/nozzlev2_f.o
+       src/hw4_m.o\
+       src/hw4_f.o
 
-
-#TESTS = \
-	src/nozzle_f.o\
-	test/tests.o
 TESTS = \
-	src/nozzlev2_f.o\
-	test/testv2.o
+	src/hw4_f.o\
+	test/hw4_t.o
 
 
 
 main:$(OBJS) 
 	$(LD)  $(LDFLAGS) -o main $(OBJS) $(LIBS)
 	rm -r $(OBJS)
-
-
-mainv1:$(OBJS2) 
-	$(LD)  $(LDFLAGS) -o mainv1 $(OBJS2) $(LIBS)
-	rm -r $(OBJS2)
-
-
 
 tests:$(TESTS)
 	$(LD)  $(LDFLAGS) -o unittest $(TESTS) $(LIBS)
@@ -64,4 +50,6 @@ tests:$(TESTS)
 clean :
 	rm -r $(OBJS)
 
-
+cleanall :
+	rm -r $(OBJS)
+	rm main unittest

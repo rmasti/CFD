@@ -4,8 +4,8 @@
  * 1/27/2017
  * This is a header file for nozzlem.cpp which will contain calls from the nozzlef.cpp file which will contain universal constants as well as function prototypes, and even structure declarations.
  */
-#ifndef nozzle_H_
-#define nozzle_H_
+#ifndef hw4_H_
+#define hw4_H_
 #include <fstream>
 #include <iostream>
 #include <Eigen/Dense>
@@ -124,4 +124,3 @@ void write_solution(FILE* &file, MatrixXd& xc, MatrixXd& Ac,
     MatrixXd* V, MatrixXd* U, constants C);
 
 #endif
-

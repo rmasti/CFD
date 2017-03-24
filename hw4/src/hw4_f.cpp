@@ -6,7 +6,7 @@
  * main cpp file. This is the function file, which has its function prototypes stored in the 
  * header file.
  */
-#include "nozzlev2.hpp" //structure templates and func prototypes
+#include "hw4.hpp" //structure templates and func prototypes
 
 void write_solution(
     //This function outputs all required variables into a 

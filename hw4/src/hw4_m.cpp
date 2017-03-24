@@ -1,11 +1,11 @@
 /* 
  * Computational Fluid Dynamics
- * This code will compute the exact isentropic solution to the 1-D axisymmetric converging-diverging supersonic nozzle.
+ * This code contains the main script for homework 4 which will use the van leer and Roe flux upwind methods
  * Written By: Robert Masti
- * 01/27/2017
+ * 03/24/2017
  * This is the main file that will that will use a header file containing to function prototypes, structure declarations, symbolic constants, class declaration, etc.. And will use a seperate cpp file for the function declarations. 
  */
-#include "nozzlev2.hpp"
+#include "hw4.hpp"
 FILE *fp1; //output the exact solution
 FILE *fp2; //output the supersonic outflow final 
 FILE *fp3; //output the subsonic outflow
@@ -27,7 +27,6 @@ int main()
   consts.gamma = 1.4; 
   consts.outflow = true; //True is supersonic outflow
   consts.cfl = 0.1; //cfl is 0.1 but can be changed after a certain number of iterations
-
   //////////////////////// START of SIMULATIONS ////////////////////////////
   //This main file is kept purposely really short and it just tells these two files to run their respective sims (exact solution, supersonic outflow, and TBD subsonic function
   
