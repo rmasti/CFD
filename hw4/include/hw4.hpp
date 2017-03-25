@@ -26,6 +26,8 @@ using namespace Eigen;
 #define R 287.058
 #define kappa2 (1.0/3.0)
 #define kappa4 (1.0/48.0)
+#define upwind_kappa
+#define upwind_epsilon
 #define dx (xmax-xmin)/(N)
 #define localdt false
 #define nmax 10000000
@@ -56,6 +58,7 @@ struct constants
   bool outflow;
   double pb; //back pressure
   double cfl;
+  bool upwind; //use upwind or artificial dissipation
 };
 
 ////////////// Function Prototypes ////////////////////
@@ -97,9 +100,9 @@ void compute_lambda(MatrixXd& Lamda_mcenter, MatrixXd* V, constants C);
 void reconstruct(MatrixXd* Uinterface, MatrixXd& Lambda_minterface, 
     MatrixXd* U, MatrixXd& Lambda_mcenter); 
 
-void compute_F_flux(MatrixXd* F, MatrixXd* U, constants C);
+void compute_F_jameson(MatrixXd* F, MatrixXd* U, constants C);
 
-void artificial_viscosity(MatrixXd* d, MatrixXd* V, 
+void add_artificial_viscosity(MatrixXd* F, MatrixXd* V, 
     MatrixXd* U, MatrixXd& Lambda_minterface);
 
 void compute_nu(MatrixXd& nu, MatrixXd* V);
@@ -107,7 +110,7 @@ void compute_nu(MatrixXd& nu, MatrixXd* V);
 void compute_source(MatrixXd* S, MatrixXd* V, MatrixXd& xc);
 
 void compute_residual(MatrixXd* Res, MatrixXd* S, MatrixXd* F,
-    MatrixXd* d, MatrixXd& Ai);
+     MatrixXd& Ai);
 
 void iteration(MatrixXd* U, double& timestep, MatrixXd* Res, 
     MatrixXd& Ac, MatrixXd& Lambda_mcenter, constants C);
@@ -123,4 +126,6 @@ void compute_norms(MatrixXd& L2norm, MatrixXd* Res);
 void write_solution(FILE* &file, MatrixXd& xc, MatrixXd& Ac,
     MatrixXd* V, MatrixXd* U, constants C);
 
+
+void compute_upwind_VLR(MatrixXd* V_L, MatrixXd* V_R, MatrixXd* V);
 #endif

@@ -8,6 +8,17 @@
  */
 #include "hw4.hpp" //structure templates and func prototypes
 
+
+
+void compute_upwind_VLR(
+    // Compute the upwind Left and right primvar states 
+    MatrixXd* V_L,                    //output - Left primvar state at interfaces of interest           
+    MatrixXd* V_R,                    //output - Right primvar state at interfaces of interest
+    MatrixXd* V)                      //input - Primvar at all cell centers
+{
+  cout << " Hello world " << endl;
+}
+
 void write_solution(
     //This function outputs all required variables into a 
     //single matrix for the whole 1d solution
@@ -88,7 +99,6 @@ void compute_residual(
     MatrixXd* Res,                      //output - Residual array of size N
     MatrixXd* S,                        //input - Source array
     MatrixXd* F,                        //input - F flux size N+1
-    MatrixXd* d,                        //input - d flux size N+1
     MatrixXd& Ai)                       //input - Area at interfaces size N+2*numghost+1
 {
   int row = 0;
@@ -97,8 +107,8 @@ void compute_residual(
     int i_int = num_ghost_cells + i; //for area vector
     for(int eq=0; eq < neq; eq++)
     {
-      Res[eq](row,i) = (F[eq](row,i+1) + d[eq](row,i+1))*Ai(row,i_int+1) -  
-        (F[eq](row,i) + d[eq](row,i))*Ai(row,i_int) - dx*S[eq](row,i);
+      Res[eq](row,i) = (F[eq](row,i+1))*Ai(row,i_int+1) -  
+        (F[eq](row,i))*Ai(row,i_int) - dx*S[eq](row,i);
     }
   }
 }
@@ -134,13 +144,14 @@ void compute_nu(
     //cout << nu(row,i)<< endl;
   }
 }
-void artificial_viscosity(
+void add_artificial_viscosity(
     // This function will compute dflux using jameson damping for all interfaces of interest
-    MatrixXd* d,                         //output - d fluxes at all interf
+    MatrixXd* F,                         //output - F fluxes at all interfaces
     MatrixXd* V,                         //input - Prim var for P's
     MatrixXd* U,                         //input - Cons var for D1 and D3
     MatrixXd& Lambda_minterface)         //input - Lambda max at interfaces of interest
 {
+
   int row = 0;
   // Fill the nu values only needed for art visc
   // NOTE that it is the same size as the V vectors
@@ -170,11 +181,12 @@ void artificial_viscosity(
       D3(row,eq) = lam*epsilon4*(U[eq](row,i_cells+2) - 3.0*U[eq](row,i_cells+1)+
         3.0*U[eq](row,i_cells) - U[eq](row,i_cells-1));
       //combine D3 and D1
-      d[eq](row,i) = D3(row,eq) - D1(row,eq);
+      // add d flux to the interface flux as is so it takes the d contributions and adds it to F
+      F[eq](row,i) = F[eq](row,i) + D3(row,eq) - D1(row,eq); 
     }
   }
 }
-void compute_F_flux(
+void compute_F_jameson(
     //This function takes in the U values at all the interfaces of interest and converts them to
     //the flux F
     MatrixXd* F,                                    //output - Flux from Uint

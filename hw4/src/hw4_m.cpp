@@ -27,17 +27,18 @@ int main()
   consts.gamma = 1.4; 
   consts.outflow = true; //True is supersonic outflow
   consts.cfl = 0.1; //cfl is 0.1 but can be changed after a certain number of iterations
+  consts.upwind = true;
   //////////////////////// START of SIMULATIONS ////////////////////////////
   //This main file is kept purposely really short and it just tells these two files to run their respective sims (exact solution, supersonic outflow, and TBD subsonic function
-  
+
   isentropic_exact(consts);// Pass the constants to isentropic exact and isentropic 
   quasi1Dnozzle(consts); // Run with supersonic outflow
 
-  consts.pb = 120.00*1000.0; //Pa
-  consts.outflow = false; //subsonic outflow condition
-  quasi1Dnozzle(consts); // Run with subsonic outflow
+  //consts.pb = 120.00*1000.0; //Pa
+  //consts.outflow = false; //subsonic outflow condition
+  //quasi1Dnozzle(consts); // Run with subsonic outflow
   //////////////////////// END of SIMULATIONS ////////////////////////////
-  
+
   cout << "Done see data directory" << endl;// Identify that all simulations have finished
   return 0;
 }
@@ -67,19 +68,22 @@ void quasi1Dnozzle(constants C)
   MatrixXd* U=new MatrixXd[4]; //conservative variables
   MatrixXd* Uinterface=new MatrixXd[4];//conservative var at interface
   MatrixXd* F=new MatrixXd[4]; //F flux 
-  MatrixXd* d=new MatrixXd[4]; //artifical d flux
   MatrixXd* S=new MatrixXd[4]; //source term
   MatrixXd* Res=new MatrixXd[4]; //residual term only on domain of interest
+  MatrixXd* V_L =new MatrixXd[4]; // Left Prim Var states
+  MatrixXd* V_R =new MatrixXd[4]; // Right Prim Var States
+
   //set size of the array 
-  for (int i = 0 ; i < 4 ; i++)
+  for (int i = 0 ; i < neq ; i++)
   {
     U[i].resize(1,number_of_cells);
     V[i].resize(1,number_of_cells);
     Uinterface[i].resize(1,N+1);
     F[i].resize(1,N+1);
-    d[i].resize(1,N+1);
     Res[i].resize(1,N);
     S[i].resize(1,N);
+    V_L[i].resize(1,N+1);
+    V_R[i].resize(1,N+1);
   }
 
   //initialize primitive variable extrapolate and then apply B.C's;
@@ -99,30 +103,36 @@ void quasi1Dnozzle(constants C)
 
     //Apply Boundary Conditions
     set_boundary_conditions(V, C);
-   
+
     //Find lambdamax at cell centers
     MatrixXd Lambda_mcenter(1, number_of_cells);
     compute_lambda(Lambda_mcenter, V, C);
-   
+
     //After extrap and boundary convert V to U
     primtocons(U, V, C);
-   
-    //Reconstruct to find Uinterface and lambdainterface
-    MatrixXd Lambda_minterface(1, N+1);//ONLY AT INTERFACES OF INTEREST
-    reconstruct(Uinterface, Lambda_minterface, U, Lambda_mcenter);
-
-    //Now with reconstructed values compute flux
-    compute_F_flux(F, Uinterface, C);
-
-    //Find the artificial viscosity flux d
-    artificial_viscosity(d, V, U, Lambda_minterface);
-
+    if (C.upwind == false)
+    {
+      //Reconstruct to find Uinterface and lambdainterface
+      MatrixXd Lambda_minterface(1, N+1);//ONLY AT INTERFACES OF INTEREST
+      reconstruct(Uinterface, Lambda_minterface, U, Lambda_mcenter);
+      //Now with reconstructed values compute flux
+      compute_F_jameson(F, Uinterface, C);
+      //Find the artificial viscosity flux d
+      add_artificial_viscosity(F, V, U, Lambda_minterface);
+    }
+    else
+    {
+      // This section is the upwind calculation for fluxes it requires
+      // Note that there exists a V_L and V_R already defined above which 
+      // will need to be filled with the compute_upwind_VLR
+      compute_upwind_VLR(V_L, V_R, V);
+    }
     //compute the S source term on the domain
     compute_source(S, V, xc);
 
     //NOTE Ai is defined at every interface including ghost cells!!
     //Compute residuals to be used in norms and for completing a step
-    compute_residual(Res, S, F, d, Ai);
+    compute_residual(Res, S, F, Ai);
 
     //Execute 1 time iteration 
     double timestep;
