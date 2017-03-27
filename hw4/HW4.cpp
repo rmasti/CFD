@@ -672,7 +672,7 @@ void Ini_rho(int MeshSize, double P0, double T0, double phi[], double R, double 
 
 void Ini_u(int MeshSize, double Mach[], double P[], double rho[], double gamma, double *ptr_u)
 {
-  for (int i = 0; i < MeshSize; i++) {
+  for (int i &= 0; i < MeshSize; i++) {
     *(ptr_u+i) = Mach[i]*sqrt(gamma*P[i]/rho[i]);
   }
 }
@@ -1138,8 +1138,7 @@ void Calc_upwind_Flux_Roe(int MeshSize, double gamma, double R, double rho_L[], 
     F3_L = rho_L[i]*u_L[i]*ht_L;
     F3_R = rho_R[i]*u_R[i]*ht_R;
 
-    ptr_F1[i] = 0.5*(F1_L + F1_R) - 0.5*( abs(abs_lambda1_Roe)*dw1*r1_Roe[0] + abs(abs_lambda2_Roe)*dw2*r2_Roe[0]
-					  + abs(abs_lambda3_Roe)*dw3*r3_Roe[0]);
+    ptr_F1[i] = 0.5*(F1_L + F1_R) - 0.5*( abs(abs_lambda1_Roe)*dw1*r1_Roe[0] + abs(abs_lambda2_Roe)*dw2*r2_Roe[0] + abs(abs_lambda3_Roe)*dw3*r3_Roe[0]);
     ptr_F2[i] = 0.5*(F2_L + F2_R) - 0.5*( abs(abs_lambda1_Roe)*dw1*r1_Roe[1] + abs(abs_lambda2_Roe)*dw2*r2_Roe[1]
 					  + abs(abs_lambda3_Roe)*dw3*r3_Roe[1]);
     ptr_F3[i] = 0.5*(F3_L + F3_R) - 0.5*( abs(abs_lambda1_Roe)*dw1*r1_Roe[2] + abs(abs_lambda2_Roe)*dw2*r2_Roe[2]

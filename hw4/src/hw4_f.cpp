@@ -10,13 +10,345 @@
 
 
 
+void compute_F_roe(
+    // This function computes the F fluxes using Roe's flux diff scheme with Roe-averaged vars
+    MatrixXd* F,                      //output - Flux at all interface of interest N+1     
+    MatrixXd* V_L,                    //input - Left state primitive variables
+    MatrixXd* V_R,                    //input - Right state primitive variables
+    constants C)                      //input - constants C for gamma maybe
+{
+  // Because of the difficulty of handling expansion fan create small epsilon to asymptote to
+  double eps = 0.1;
+
+  // Declare roe averaged vars
+  double rho_Roe; // rho avg
+  double u_Roe; // u avg
+  double v_Roe; // v avg
+  double ht_Roe; // ht avg
+  double a_Roe; // sound speed avg
+  double R_Roe; // used to get rho_Roe
+
+  // Declare LR ht
+  double ht_L, ht_R;
+  // Declare delta vars
+  double drho, du, dv, dP;
+  // define absolute value of lambda
+  double abs_lambda1_Roe, abs_lambda2_Roe, abs_lambda3_Roe, abs_lambda4_Roe; 
+  // define r's which go with the characteristic variables //4 vars long 
+  double r1_Roe[neq], r2_Roe[neq], r3_Roe[neq], r4_Roe[neq];
+  // define characteristic vars
+  double dw1, dw2, dw3, dw4;
+
+  // Write flux contributions L and R states
+  double F1_L, F2_L, F3_L, F4_L;
+  double F1_R, F2_R, F3_R, F4_R;
+
+
+  // Loop over all of the interfaces of interest
+  int row=0;
+  for (int i = 0; i < F[frhouid].cols(); i++)
+  {
+    // get roe averaged roe
+    R_Roe = sqrt(V_R[rhoid](row,i) / V_L[rhoid](row,i));
+    rho_Roe = R_Roe*V_L[rhoid](row,i);
+
+    // get roe averaged u
+    u_Roe = (R_Roe*V_R[uid](row,i) + V_L[uid](row,i)) / (R_Roe + 1);
+
+    // get roe averaged v
+    // ...
+
+    // get roe averaged ht
+    ht_L = (C.gamma/(C.gamma - 1))*V_L[pid](row,i) / V_L[rhoid](row,i) 
+      + 0.5*V_L[uid](row,i)*V_L[uid](row,i);
+    ht_R = (C.gamma/(C.gamma - 1))*V_R[pid](row,i) / V_R[rhoid](row,i) 
+      + 0.5*V_R[uid](row,i)*V_R[uid](row,i);
+    ht_Roe = (R_Roe*ht_R + ht_L) / (R_Roe + 1);
+
+    // get roe averaged soundspeed 
+    a_Roe = sqrt( (C.gamma - 1)*(ht_Roe - 0.5*u_Roe*u_Roe));
+
+    // compute eigen values
+    abs_lambda1_Roe = abs(u_Roe);
+    abs_lambda2_Roe = abs(u_Roe + a_Roe);
+    abs_lambda3_Roe = 0; // v lambda uknown
+    abs_lambda4_Roe = abs(u_Roe - a_Roe);
+
+    // Apply expansion fan fix with epsilons
+    if (abs_lambda1_Roe < 2*eps*a_Roe) 
+      abs_lambda1_Roe = abs_lambda1_Roe*abs_lambda1_Roe/(4.0*eps*a_Roe) + eps*a_Roe;
+    if (abs_lambda2_Roe < 2*eps*a_Roe) 
+      abs_lambda2_Roe = abs_lambda2_Roe*abs_lambda2_Roe/(4.0*eps*a_Roe) + eps*a_Roe;
+    if (abs_lambda3_Roe < 2*eps*a_Roe) 
+      abs_lambda3_Roe = 0;
+    if (abs_lambda4_Roe < 2*eps*a_Roe) 
+      abs_lambda4_Roe = abs_lambda4_Roe*abs_lambda4_Roe/(4.0*eps*a_Roe) + eps*a_Roe;
+
+    // get the right eigen vectors
+    r1_Roe[0] = 1.0; //cont
+    r1_Roe[1] = u_Roe; // xmtm
+    r1_Roe[2] = 0;  // ymtm
+    r1_Roe[3] = 0.5*u_Roe*u_Roe; // energy
+
+    r2_Roe[0] = (0.5*rho_Roe/a_Roe)*(1.0);
+    r2_Roe[1] = (0.5*rho_Roe/a_Roe)*(u_Roe + a_Roe);
+    r2_Roe[2] = (0.5*rho_Roe/a_Roe)*(0.0);
+    r2_Roe[3] = (0.5*rho_Roe/a_Roe)*(ht_Roe + u_Roe*a_Roe);
+ 
+    r3_Roe[0] = 0.0;
+    r3_Roe[1] = 0.0;
+    r3_Roe[2] = 0.0;
+    r3_Roe[3] = 0.0;
+
+    r4_Roe[0] = -(0.5*rho_Roe/a_Roe)*(1.0);
+    r4_Roe[1] = -(0.5*rho_Roe/a_Roe)*(u_Roe - a_Roe);
+    r4_Roe[2] = -(0.5*rho_Roe/a_Roe)*(0.0);
+    r4_Roe[3] = -(0.5*rho_Roe/a_Roe)*(ht_Roe - u_Roe*a_Roe);
+
+    // get the variation
+    drho = V_R[rhoid](row,i) - V_L[rhoid](row,i);
+    du = V_R[uid](row,i) - V_L[uid](row,i);
+    dv = V_R[vid](row,i) - V_L[vid](row,i);
+    dP = V_R[pid](row,i) - V_L[pid](row,i);
+
+    // find characteristic vars
+    dw1 = drho - dP/(a_Roe*a_Roe);
+    dw2 = du + dP/(rho_Roe*a_Roe);
+    dw3 = 0.0;
+    dw4 = du - dP/(rho_Roe*a_Roe);
+    
+    // calc first order fluxes left and right states
+    // cont
+    F1_L = V_L[rhoid](row,i)*V_L[uid](row,i);
+    F1_R = V_R[rhoid](row,i)*V_R[uid](row,i);
+    // x-mtm
+    F2_L = V_L[rhoid](row,i)*V_L[uid](row,i)*V_L[uid](row,i) + V_L[pid](row,i);
+    F2_R = V_R[rhoid](row,i)*V_R[uid](row,i)*V_R[uid](row,i) + V_R[pid](row,i);
+    // y-mtm
+    F3_L = 0.0;
+    F3_R = 0.0;
+    // energy
+    F4_L = V_L[rhoid](row,i)*V_L[uid](row,i)*ht_L;
+    F4_R = V_R[rhoid](row,i)*V_R[uid](row,i)*ht_R;
+
+    // Compute fluxes
+    // cont
+    F[frhouid](row,i) = 0.5*(F1_L + F1_R)
+      -0.5*(abs(abs_lambda1_Roe)*dw1*r1_Roe[0] 
+        + abs(abs_lambda2_Roe)*dw2*r2_Roe[0]
+        + abs(abs_lambda3_Roe)*dw3*r3_Roe[0]
+        + abs(abs_lambda4_Roe)*dw4*r4_Roe[0]
+        );
+
+    // x-mtm
+    F[frhouuid](row,i) = 0.5*(F2_L + F2_R) 
+      -0.5*(abs(abs_lambda1_Roe)*dw1*r1_Roe[1] 
+        + abs(abs_lambda2_Roe)*dw2*r2_Roe[1]
+        + abs(abs_lambda3_Roe)*dw3*r3_Roe[1]
+        + abs(abs_lambda4_Roe)*dw4*r4_Roe[1]
+        );
+
+    // y-mtm
+    F[frhovid](row,i) = 0.5*(F3_L + F3_R) 
+      -0.5*(abs(abs_lambda1_Roe)*dw1*r1_Roe[2] 
+        + abs(abs_lambda2_Roe)*dw2*r2_Roe[2]
+        + abs(abs_lambda3_Roe)*dw3*r3_Roe[2]
+        + abs(abs_lambda4_Roe)*dw4*r4_Roe[2]
+        );
+
+    // x-mtm
+    F[frhouhtid](row,i) = 0.5*(F4_L + F4_R)
+      -0.5*(abs(abs_lambda1_Roe)*dw1*r1_Roe[3] 
+        + abs(abs_lambda2_Roe)*dw2*r2_Roe[3]
+        + abs(abs_lambda3_Roe)*dw3*r3_Roe[3]
+        + abs(abs_lambda4_Roe)*dw4*r4_Roe[3]
+        );
+  }
+}
+
+void compute_F_vanleer(
+    // This function will use the right and left state primitive variables to determine fluxes
+    MatrixXd* F,                      //output - Flux at all interfaces of interest N+1        
+    MatrixXd* V_L,                    //input - Left state at interfaces of interest
+    MatrixXd* V_R,                    //input - Right state at interfaces of interest
+    constants C)                      //input - constants C
+{
+  double M_L, M_R, M_pos, M_neg; // Mach left right then pos neg
+  double beta_L, beta_R; // beta left right using in final form
+  double alpha_pos, alpha_neg; // alpha pos neg used in calc c
+  double c_pos, c_neg; // c is used in flux addition convective
+  double a_L, a_R; // sound speed
+  double D_pos, D_neg; // pressure flux constants
+  double Pbar_pos, Pbar_neg; // pressure bar for mtm?
+  double ht_L, ht_R; // enthalpy total left and right states
+  // Define Flux Contributions
+  double Fc1, Fc2, Fc3, Fc4; // frhouid, frhouuid, frhovid, frhouhtid //convective flux
+  double Fp1, Fp2, Fp3, Fp4; // frhouid, frhouuid, frhovid, frhouhtid //Pressure flux
+
+  int row = 0;
+
+  // loop over and fill in flux
+  for (int i = 0; i < F[frhouid].cols(); i++)
+  {
+    // Find the soundspeeds
+    a_L = compute_soundspeed(C.gamma, V_L[pid](row,i),V_L[rhoid](row,i));
+    a_R = compute_soundspeed(C.gamma, V_R[pid](row,i),V_R[rhoid](row,i));
+
+    // Find the Mach numbers left and right state
+    M_L = V_L[uid](row,i)/a_L;
+    M_R = V_R[uid](row,i)/a_R;
+
+    // Find the pos and negative mach
+    M_pos = 0.25*(M_L + 1)*(M_L + 1);
+    M_neg = -0.25*(M_R - 1)*(M_R - 1);
+
+    // Find Beta left and right state
+    beta_L = -mymax(0,1 - int(abs(M_L)));
+    beta_R = -mymax(0,1 - int(abs(M_R)));
+
+    // Find alpha pos and neg
+    alpha_pos = 0.5*(1 + SIGN(1,M_L));
+    alpha_neg = 0.5*(1 - SIGN(1,M_R));
+
+    // Find c pos neg for use in flux finding
+    c_pos = alpha_pos*(1 + beta_L)*M_L - beta_L*M_pos;
+    c_neg = alpha_neg*(1 + beta_R)*M_R - beta_R*M_neg;
+
+    // Find the Pbar pos and neg
+    Pbar_pos = M_pos*(-M_L + 2);
+    Pbar_neg = M_neg*(-M_R - 2);
+
+    // Find the D pos and neg
+    D_pos = alpha_pos*(1 + beta_L) - beta_L*Pbar_pos;
+    D_neg = alpha_neg*(1 + beta_R) - beta_R*Pbar_neg;
+
+    // Find ht L and R states
+    ht_L = (C.gamma/(C.gamma - 1))*V_L[pid](row,i) / V_L[rhoid](row,i) 
+      + 0.5*V_L[uid](row,i)*V_L[uid](row,i);
+    ht_R = (C.gamma/(C.gamma - 1))*V_R[pid](row,i) / V_R[rhoid](row,i) 
+      + 0.5*V_R[uid](row,i)*V_R[uid](row,i);
+
+    // Find Convective Flux Contributions
+    // cont
+    Fc1 = V_L[rhoid](row,i)*a_L*c_pos + V_R[rhoid](row,i)*a_R*c_neg;
+    // x-mtm
+    Fc2 = V_L[rhoid](row,i)*a_L*c_pos*V_L[uid](row,i)+V_R[rhoid](row,i)*a_R*c_neg*V_R[uid](row,i);
+    // y-mtm
+    Fc3 = 0.0;
+    // ht 
+    Fc4 = V_L[rhoid](row,i)*a_L*c_pos*ht_L + V_R[rhoid](row,i)*a_R*c_neg*ht_R;
+
+    // Find Pressure Flux Contributions
+    // cont
+    Fp1 = 0.0;
+    // x-mtm
+    Fp2 = D_pos*V_L[pid](row,i) + D_neg*V_R[pid](row,i);
+    // y-mtm
+    Fp3 = 0.0;
+    // ht
+    Fp4 = 0.0;
+
+    // Compute the flux at the interfaces
+    F[frhouid](row,i) = Fc1 + Fp1;
+    F[frhouuid](row,i) = Fc2 + Fp2;
+    F[frhovid](row,i) = Fc3 + Fp3;
+    F[frhouhtid](row,i) = Fc4 + Fp4;
+  }
+}
+
+
 void compute_upwind_VLR(
     // Compute the upwind Left and right primvar states 
     MatrixXd* V_L,                    //output - Left primvar state at interfaces of interest           
     MatrixXd* V_R,                    //output - Right primvar state at interfaces of interest
-    MatrixXd* V)                      //input - Primvar at all cell centers
+    MatrixXd* V,                      //input - Primvar at all cell centers
+    constants C)                     //input - Choose limiter                     
 {
-  cout << " Hello world " << endl;
+  // Create the psi_positive and psi_negative and define at all interfaces So N+ghost+1
+  //
+  int row = 0;
+  MatrixXd*  Psi_Pos=new MatrixXd[neq];
+  MatrixXd*  Psi_Neg=new MatrixXd[neq];
+  for (int eq = 0 ; eq < neq; eq++)
+  {
+    Psi_Pos[eq].resize(1,V[rhoid].cols()+1); //Every interface can have a psi value*****
+    Psi_Neg[eq].resize(1,V[rhoid].cols()+1); //Also can have negative values
+  }
+  // At this point Psi's have the correct size, but will just need to be filled in now
+  compute_psi_pn(Psi_Pos, Psi_Neg, V, C);
+
+  // Now the psi values are known at all interface values now fill in LR states
+  for (int i = 0 ; i < V_L[rhoid].cols(); i++)
+  {
+    int i_cells = (num_ghost_cells-1) + i; // start at i = 2 where i+1/2 starts 
+    int i_int = num_ghost_cells+i; // starts at the 3rd interface
+    for (int eq = 0 ; eq < neq; eq++)
+    {    
+      // Note i_cells + 1 is the index for the i+1/2 value of psi
+      // Left state at the interface
+      V_L[eq](row,i) = V[eq](row,i_cells) + 0.25*upwind_epsilon*(
+          (1.0-upwind_kappa)*Psi_Pos[eq](row,i_int-1)*(V[eq](row,i_cells)-V[eq](row,i_cells-1))
+          + (1.0+upwind_kappa)*Psi_Neg[eq](row,i_int)*(V[eq](row,i_cells+1)-V[eq](row,i_cells))
+          );
+      // Right state at the interface
+      V_R[eq](row,i) = V[eq](row,i_cells+1) - 0.25*upwind_epsilon*(
+          (1.0-upwind_kappa)*Psi_Neg[eq](row,i_int+1)*(V[eq](row,i_cells+2)-V[eq](row,i_cells+1))
+          + (1.0+upwind_kappa)*Psi_Pos[eq](row,i_int)*(V[eq](row,i_cells+1)-V[eq](row,i_cells))
+          );
+    }
+  }
+}
+
+
+void compute_psi_pn(
+    // Fill in the Pos and Neg Psi at all interface values possible 2 - last-2
+    // This also applies the limiters to the psi values
+    MatrixXd* Psi_Pos,                //ouput - Psi_Pos at interfaces                   
+    MatrixXd* Psi_Neg,                //output - Psi_Neg at interfaces
+    MatrixXd* V,                      //input - Used to find slopes
+    constants C)                      //input - Choose the limiter
+{
+
+  int row = 0;
+  double delta = 1.0e-6; // Small number to avoid division by 0
+  // Loop over the cell centroid indexes then just add 1 for the i+1/2 interface index
+  for (int i = num_ghost_cells-2 ; i <= N+num_ghost_cells; i++)
+  {
+    // Loop over all of the primvars
+    for (int eq = 0; eq < neq; eq++)
+    {
+      // Calculate the denom which is the same for pos and neg
+      double denom = V[eq](row,i+1) - V[eq](row,i);
+      // Ensure not division by 0
+      denom = SIGN( mymax(abs(denom), delta), denom);
+      // Calculate the slopes (r) for both pos and neg dir
+      double r_p = (V[eq](row,i+2) - V[eq](row, i+1))/denom;
+      double r_n = (V[eq](row,i) - V[eq](row, i-1))/denom;
+      // Apply Limiters
+      if ( C.limiter == 0 )  //no limiters
+      {
+        Psi_Pos[eq](row,i+1) = 1.0;
+        Psi_Neg[eq](row,i+1) = 1.0;
+      }
+      if ( C.limiter == 1 )  //Van leer
+      {
+        Psi_Pos[eq](row,i+1) = (r_p + abs(r_p)) / (1 + r_p);
+        Psi_Neg[eq](row,i+1) = (r_n + abs(r_n)) / (1 + r_n);
+      }
+      if ( C.limiter == 2 ) //Van Albada 
+      {
+        // if negative reduce to first order
+        if( r_p < 0)
+          Psi_Pos[eq](row,i+1) = 0.0;
+        else
+          Psi_Pos[eq](row,i+1) = (r_p + r_p*r_p) / (1 + r_p*r_p);
+        if( r_n < 0)
+          Psi_Neg[eq](row,i+1) = 0.0;
+        else
+          Psi_Neg[eq](row,i+1) = (r_n + r_n*r_n) / (1 + r_n*r_n);
+      }
+    }
+  }
 }
 
 void write_solution(
@@ -167,7 +499,7 @@ void add_artificial_viscosity(
     double epsilon2 = kappa2*mymax(
         mymax(nu(row,i_cells-1),nu(row,i_cells)),
         mymax(nu(row,i_cells+1),nu(row,i_cells+2)));
-    
+
     double epsilon4 = mymax(0, (kappa4 - epsilon2));
     // write lam for brevity in the long calcs
     double lam = Lambda_minterface(row,i);
@@ -179,7 +511,7 @@ void add_artificial_viscosity(
     {
       D1(row,eq) = lam*epsilon2*(U[eq](row,i_cells+1) - U[eq](row,i_cells));
       D3(row,eq) = lam*epsilon4*(U[eq](row,i_cells+2) - 3.0*U[eq](row,i_cells+1)+
-        3.0*U[eq](row,i_cells) - U[eq](row,i_cells-1));
+          3.0*U[eq](row,i_cells) - U[eq](row,i_cells-1));
       //combine D3 and D1
       // add d flux to the interface flux as is so it takes the d contributions and adds it to F
       F[eq](row,i) = F[eq](row,i) + D3(row,eq) - D1(row,eq); 
@@ -427,6 +759,15 @@ double dAdx(double x)
   if (x < xmin_dom || x > xmax_dom) return 0.0;
   else return 0.4*M_PI*cos(M_PI*(x-0.5));//derivative of func above
 }
+
+double SIGN(double a, double b)
+{
+  if (b<0)
+    return -a;
+  else
+    return a;
+}
+
 
 void exactsol(
     //This function computes the exact solution

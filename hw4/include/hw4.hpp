@@ -17,7 +17,7 @@
 using namespace std;
 using namespace Eigen;
 
-#define N 256
+#define N 64
 #define xmax 1.5
 #define xmin -1.5
 #define xmax_dom 1.0
@@ -26,8 +26,8 @@ using namespace Eigen;
 #define R 287.058
 #define kappa2 (1.0/3.0)
 #define kappa4 (1.0/48.0)
-#define upwind_kappa
-#define upwind_epsilon
+#define upwind_kappa -0.0
+#define upwind_epsilon 1.0
 #define dx (xmax-xmin)/(N)
 #define localdt false
 #define nmax 10000000
@@ -58,7 +58,8 @@ struct constants
   bool outflow;
   double pb; //back pressure
   double cfl;
-  bool upwind; //use upwind or artificial dissipation
+  int upwind; //use 1 upwind VL flux or 0 artificial dissipation or 2 upwind Roe Flux
+  int limiter; // 0 for no, 1 for van leer, 2 for van albada
 };
 
 ////////////// Function Prototypes ////////////////////
@@ -126,6 +127,17 @@ void compute_norms(MatrixXd& L2norm, MatrixXd* Res);
 void write_solution(FILE* &file, MatrixXd& xc, MatrixXd& Ac,
     MatrixXd* V, MatrixXd* U, constants C);
 
+void compute_upwind_VLR(MatrixXd* V_L, MatrixXd* V_R, MatrixXd* V,
+    constants C);
 
-void compute_upwind_VLR(MatrixXd* V_L, MatrixXd* V_R, MatrixXd* V);
+void compute_psi_pn(MatrixXd* Psi_Pos, MatrixXd* Psi_Neg, MatrixXd* V,
+    constants C);
+
+double SIGN(double a, double b);
+
+void compute_F_vanleer(MatrixXd* F, MatrixXd* V_L, 
+    MatrixXd* V_R, constants C);
+
+void compute_F_roe(MatrixXd* F, MatrixXd* V_L, MatrixXd* V_R, constants C);
+
 #endif

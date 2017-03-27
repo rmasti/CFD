@@ -27,7 +27,8 @@ int main()
   consts.gamma = 1.4; 
   consts.outflow = true; //True is supersonic outflow
   consts.cfl = 0.1; //cfl is 0.1 but can be changed after a certain number of iterations
-  consts.upwind = true;
+  consts.upwind = 2; // 0 - Jameson Damping, 1 - Van Leer flux, 2 - Roe flux
+  consts.limiter = 2; // limiters: 0 for no 1 for van leer and 2 for van albada
   //////////////////////// START of SIMULATIONS ////////////////////////////
   //This main file is kept purposely really short and it just tells these two files to run their respective sims (exact solution, supersonic outflow, and TBD subsonic function
 
@@ -64,14 +65,14 @@ void quasi1Dnozzle(constants C)
 
   // The following creates 4 U values on the entire grid of 1xnumbcells
   // As an example to access U2 on node 2,1 it would be U[1](1,0)
-  MatrixXd* V=new MatrixXd[4]; //primitive variables
-  MatrixXd* U=new MatrixXd[4]; //conservative variables
-  MatrixXd* Uinterface=new MatrixXd[4];//conservative var at interface
-  MatrixXd* F=new MatrixXd[4]; //F flux 
-  MatrixXd* S=new MatrixXd[4]; //source term
-  MatrixXd* Res=new MatrixXd[4]; //residual term only on domain of interest
-  MatrixXd* V_L =new MatrixXd[4]; // Left Prim Var states
-  MatrixXd* V_R =new MatrixXd[4]; // Right Prim Var States
+  MatrixXd* V=new MatrixXd[neq]; //primitive variables
+  MatrixXd* U=new MatrixXd[neq]; //conservative variables
+  MatrixXd* Uinterface=new MatrixXd[neq];//conservative var at interface
+  MatrixXd* F=new MatrixXd[neq]; //F flux 
+  MatrixXd* S=new MatrixXd[neq]; //source term
+  MatrixXd* Res=new MatrixXd[neq]; //residual term only on domain of interest
+  MatrixXd* V_L =new MatrixXd[neq]; // Left Prim Var states
+  MatrixXd* V_R =new MatrixXd[neq]; // Right Prim Var States
 
   //set size of the array 
   for (int i = 0 ; i < neq ; i++)
@@ -110,7 +111,7 @@ void quasi1Dnozzle(constants C)
 
     //After extrap and boundary convert V to U
     primtocons(U, V, C);
-    if (C.upwind == false)
+    if (C.upwind == 0) // Jameson damping
     {
       //Reconstruct to find Uinterface and lambdainterface
       MatrixXd Lambda_minterface(1, N+1);//ONLY AT INTERFACES OF INTEREST
@@ -125,8 +126,22 @@ void quasi1Dnozzle(constants C)
       // This section is the upwind calculation for fluxes it requires
       // Note that there exists a V_L and V_R already defined above which 
       // will need to be filled with the compute_upwind_VLR
-      compute_upwind_VLR(V_L, V_R, V);
+      compute_upwind_VLR(V_L, V_R, V, C);
+      // Now with the left and right state values compute the fluxes
     }
+
+    if (C.upwind == 1) // Van Leer Flux vector splitting
+    {
+      compute_F_vanleer(F, V_L, V_R, C);
+      //cout << F[pid].transpose()<< endl;
+    }
+
+    if (C.upwind == 2) // Roe Flux diff splitting
+    {
+      compute_F_roe(F, V_L, V_R, C);
+      //cout << F[pid].transpose()<< endl;
+    }
+
     //compute the S source term on the domain
     compute_source(S, V, xc);
 
@@ -182,7 +197,7 @@ void quasi1Dnozzle(constants C)
       }
       break;
     }
-    if (n % 1000 == 0)
+    if (n % 100 == 0)
     {
       //OUTPUT RESIDUAL HISTORY
       if (C.outflow == true)
@@ -212,9 +227,9 @@ void isentropic_exact(constants C)
   int number_of_cells = N+2*num_ghost_cells;
   MatrixXd xc(1, N+2*num_ghost_cells);
   MatrixXd xi(1, N+2*num_ghost_cells+1);
-  MatrixXd* U=new MatrixXd[4]; //Conserved variables
-  MatrixXd* V=new MatrixXd[4]; //primitive variables
-  for (int i = 0 ; i < 4 ; i++)
+  MatrixXd* U=new MatrixXd[neq]; //Conserved variables
+  MatrixXd* V=new MatrixXd[neq]; //primitive variables
+  for (int i = 0 ; i < neq ; i++)
   {
     U[i].resize(1,number_of_cells);
     V[i].resize(1,number_of_cells);
