@@ -27,17 +27,17 @@ int main()
   consts.gamma = 1.4; 
   consts.outflow = true; //True is supersonic outflow
   consts.cfl = 0.1; //cfl is 0.1 but can be changed after a certain number of iterations
-  consts.upwind = 2; // 0 - Jameson Damping, 1 - Van Leer flux, 2 - Roe flux
-  consts.limiter = 0; // limiters: 0 for no 1 for van leer and 2 for van albada
+  consts.upwind = 1; // 0 - Jameson Damping, 1 - Van Leer flux, 2 - Roe flux
+  consts.limiter = 2; // limiters: 0 for no 1 for van leer and 2 for van albada
   //////////////////////// START of SIMULATIONS ////////////////////////////
   //This main file is kept purposely really short and it just tells these two files to run their respective sims (exact solution, supersonic outflow, and TBD subsonic function
 
   isentropic_exact(consts);// Pass the constants to isentropic exact and isentropic 
-  quasi1Dnozzle(consts); // Run with supersonic outflow
+  //quasi1Dnozzle(consts); // Run with supersonic outflow
 
   //consts.pb = 120.00*1000.0; //Pa
   //consts.outflow = false; //subsonic outflow condition
-  //quasi1Dnozzle(consts); // Run with subsonic outflow
+  quasi1Dnozzle(consts); // Run with subsonic outflow
   //////////////////////// END of SIMULATIONS ////////////////////////////
 
   cout << "Done see data directory" << endl;// Identify that all simulations have finished
@@ -98,7 +98,7 @@ void quasi1Dnozzle(constants C)
   double L2normold4 = 10.0;
   for(int n= 0 ;  n < nmax; n++)
   {
-    if (n == 90000) C.limiter = 0;
+    //if (n == 90000) C.limiter = 0;
     // Beginning of Iteration Loop
     //extrapolate the interior cells to the ghost cells
     extrapolate_to_ghost(V);
