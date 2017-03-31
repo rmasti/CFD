@@ -280,6 +280,7 @@ void compute_upwind_VLR(
   {
     int i_cells = (num_ghost_cells-1) + i; // start at i = 2 where i+1/2 starts 
     int i_int = num_ghost_cells+i; // starts at the 3rd interface
+    //cout << " i = " << i << " i_cell = " << i_cells << " i_int = " << i_int<< endl;
     for (int eq = 0 ; eq < neq; eq++)
     {    
       // Note i_cells + 1 is the index for the i+1/2 value of psi
@@ -293,6 +294,9 @@ void compute_upwind_VLR(
           (1.0-upwind_kappa)*Psi_Neg[eq](row,i_int+1)*(V[eq](row,i_cells+2)-V[eq](row,i_cells+1))
           + (1.0+upwind_kappa)*Psi_Pos[eq](row,i_int)*(V[eq](row,i_cells+1)-V[eq](row,i_cells))
           );
+
+      //cout << std::setprecision(14) << " Change in V: Vo = " << V[eq](row,i_cells) 
+       // << " V_L = " << V_L[eq](row,i) << " V_R = " << V_R[eq](row,i) << endl;
     }
   }
 }
@@ -312,6 +316,7 @@ void compute_psi_pn(
   // Loop over the cell centroid indexes then just add 1 for the i+1/2 interface index
   for (int i = num_ghost_cells-2 ; i <= N+num_ghost_cells; i++)
   {
+    //cout << i << endl;
     // Loop over all of the primvars
     for (int eq = 0; eq < neq; eq++)
     {
@@ -347,7 +352,17 @@ void compute_psi_pn(
           Psi_Neg[eq](row,i+1) = (r_n + r_n*r_n) / (1 + r_n*r_n);
       }
     }
+
   }
+
+
+  //cout << "psipos " << endl;
+  //cout << std::setprecision(14) << Psi_Pos[rhoid].transpose() << endl;
+
+  //cout << "psineg " << endl;
+  //cout << std::setprecision(14) << Psi_Neg[rhoid].transpose() << endl;
+
+
 }
 
 void write_solution(
@@ -735,12 +750,15 @@ double A_x(double x)
 double M_xinitial(double x)
   //This function initializes the mach number everywhere in the domain
 {
-  double slope = (1.9 - 0.1)/(xmax_dom - xmin_dom);
-  double b = 0.1-slope*xmin_dom;
+  double slope = (1.8 - 0.2)/(xmax_dom - xmin_dom);
+  double b = 0.2-slope*xmin_dom;
   double out; 
-  if (x < xmin_dom) out = slope*xmin_dom+b;
-  else if (x > xmax_dom ) out = slope*xmax_dom+b;
-  else out = slope*x+b;
+  //if (x < xmin_dom) out = slope*xmin_dom+b;
+  //else if (x > xmax_dom ) out = slope*xmax_dom+b;
+  //else out = slope*x+b;
+  if (x < xmin_dom) out = 0.2;
+  else if (x > xmax_dom ) out = 1.8;
+  else out = 0.9*x+1.0;
   return out;
 }
 

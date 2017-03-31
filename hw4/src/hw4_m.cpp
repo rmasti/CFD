@@ -96,7 +96,8 @@ void quasi1Dnozzle(constants C)
   double L2normold2 = 10.0;
   double L2normold3 = 10.0;
   double L2normold4 = 10.0;
-  for(int n= 0 ;  n < nmax; n++)
+  //for(int n= 0 ;  n < nmax; n++)
+  for(int n= 0 ;  n < 2; n++)
   {
     //if (n == 90000) C.limiter = 0;
     // Beginning of Iteration Loop
@@ -112,6 +113,8 @@ void quasi1Dnozzle(constants C)
 
     //After extrap and boundary convert V to U
     primtocons(U, V, C);
+    //cout << std::setprecision(14) << V[uid].transpose() << endl;
+
     if (C.upwind == 0) // Jameson damping
     {
       //Reconstruct to find Uinterface and lambdainterface
@@ -128,6 +131,8 @@ void quasi1Dnozzle(constants C)
       // Note that there exists a V_L and V_R already defined above which 
       // will need to be filled with the compute_upwind_VLR
       compute_upwind_VLR(V_L, V_R, V, C);
+      //cout<< std::setprecision(14) << V_L[rhoid].transpose() << endl;
+      cout<< std::setprecision(14) << V_R[rhoid].transpose() << endl;
       // Now with the left and right state values compute the fluxes
     }
     if (C.upwind == 1) // Van Leer Flux vector splitting
@@ -192,6 +197,9 @@ void quasi1Dnozzle(constants C)
       }
       break;
     }
+    if (std::isnan(L2normrel(0,rhoid)) || std::isnan(L2normrel(0,uid)) ||
+        std::isnan(L2normrel(0,pid)))
+      break;
     if (n % 100 == 0)
     {
       //OUTPUT RESIDUAL HISTORY
