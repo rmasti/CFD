@@ -28,7 +28,7 @@ int main()
   consts.outflow = true; //True is supersonic outflow
   consts.cfl = 0.1; //cfl is 0.1 but can be changed after a certain number of iterations
   consts.upwind = 2; // 0 - Jameson Damping, 1 - Van Leer flux, 2 - Roe flux
-  consts.limiter = 2; // limiters: 0 for no 1 for van leer and 2 for van albada
+  consts.limiter = 0; // limiters: 0 for no 1 for van leer and 2 for van albada
   //////////////////////// START of SIMULATIONS ////////////////////////////
   //This main file is kept purposely really short and it just tells these two files to run their respective sims (exact solution, supersonic outflow, and TBD subsonic function
 
@@ -98,6 +98,7 @@ void quasi1Dnozzle(constants C)
   double L2normold4 = 10.0;
   for(int n= 0 ;  n < nmax; n++)
   {
+    if (n == 90000) C.limiter = 0;
     // Beginning of Iteration Loop
     //extrapolate the interior cells to the ghost cells
     extrapolate_to_ghost(V);
@@ -129,18 +130,12 @@ void quasi1Dnozzle(constants C)
       compute_upwind_VLR(V_L, V_R, V, C);
       // Now with the left and right state values compute the fluxes
     }
-
     if (C.upwind == 1) // Van Leer Flux vector splitting
-    {
       compute_F_vanleer(F, V_L, V_R, C);
       //cout << F[pid].transpose()<< endl;
-    }
-
     if (C.upwind == 2) // Roe Flux diff splitting
-    {
       compute_F_roe(F, V_L, V_R, C);
       //cout << F[pid].transpose()<< endl;
-    }
 
     //compute the S source term on the domain
     compute_source(S, V, xc);
@@ -201,17 +196,13 @@ void quasi1Dnozzle(constants C)
     {
       //OUTPUT RESIDUAL HISTORY
       if (C.outflow == true)
-      {
         //supersonic outflow
         fprintf(fp4, "%i %e %e %e %e %e\n", n, t, L2normrel(0,rhoid), 
             L2normrel(0,uid), L2normrel(0,vid), L2normrel(0,pid));
-      }
       else
-      {
         //subsonic outflow
         fprintf(fp5, "%i %e %e %e %e %e\n", n, t, L2normrel(0,rhoid), 
             L2normrel(0,uid), L2normrel(0,vid), L2normrel(0,pid));
-      }
       cout << "n = " << n <<  " L2normrel: rho= " << L2normrel(0,0) << 
         " rhou= " << L2normrel(0,1) << 
         " rhov= " << L2normrel(0,2) <<

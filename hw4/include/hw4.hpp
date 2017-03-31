@@ -26,7 +26,7 @@ using namespace Eigen;
 #define R 287.058
 #define kappa2 (1.0/3.0)
 #define kappa4 (1.0/48.0)
-#define upwind_kappa -0.0
+#define upwind_kappa 0.333333
 #define upwind_epsilon 1.0
 #define dx (xmax-xmin)/(N)
 #define localdt false

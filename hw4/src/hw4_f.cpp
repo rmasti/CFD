@@ -2,13 +2,11 @@
  * Computational Fluid Dynamics
  * Written By: Robert Masti
  * 1/27/2017
- * This file contains all function declarations that will be called in hw1_m.cpp which is the 
+ * This file contains all function declarations that will be called in hw4_m.cpp which is the 
  * main cpp file. This is the function file, which has its function prototypes stored in the 
  * header file.
  */
 #include "hw4.hpp" //structure templates and func prototypes
-
-
 
 void compute_F_roe(
     // This function computes the F fluxes using Roe's flux diff scheme with Roe-averaged vars
@@ -17,7 +15,7 @@ void compute_F_roe(
     MatrixXd* V_R,                    //input - Right state primitive variables
     constants C)                      //input - constants C for gamma maybe
 {
-  // Because of the difficulty of handling expansion fan create small epsilon to asymptote to
+  // Because of the difficulty of handling expansion fan create small epsilon to asymptote to 0.1
   double eps = 0.1;
 
   // Declare roe averaged vars
@@ -95,7 +93,7 @@ void compute_F_roe(
     r2_Roe[2] = (0.5*rho_Roe/a_Roe)*(0.0);
     r2_Roe[3] = (0.5*rho_Roe/a_Roe)*(ht_Roe + u_Roe*a_Roe);
  
-    r3_Roe[0] = 0.0;
+    r3_Roe[0] = 0.0; // there was now eigen vector for the y vel
     r3_Roe[1] = 0.0;
     r3_Roe[2] = 0.0;
     r3_Roe[3] = 0.0;
@@ -262,7 +260,7 @@ void compute_upwind_VLR(
     MatrixXd* V_L,                    //output - Left primvar state at interfaces of interest           
     MatrixXd* V_R,                    //output - Right primvar state at interfaces of interest
     MatrixXd* V,                      //input - Primvar at all cell centers
-    constants C)                     //input - Choose limiter                     
+    constants C)                      //input - Choose limiter                     
 {
   // Create the psi_positive and psi_negative and define at all interfaces So N+ghost+1
   //
@@ -330,10 +328,11 @@ void compute_psi_pn(
         Psi_Pos[eq](row,i+1) = 1.0;
         Psi_Neg[eq](row,i+1) = 1.0;
       }
+
       if ( C.limiter == 1 )  //Van leer
       {
-        Psi_Pos[eq](row,i+1) = (r_p + abs(r_p)) / (1 + r_p);
-        Psi_Neg[eq](row,i+1) = (r_n + abs(r_n)) / (1 + r_n);
+        Psi_Pos[eq](row,i+1) = (r_p + abs(r_p)) / (1 + abs(r_p));
+        Psi_Neg[eq](row,i+1) = (r_n + abs(r_n)) / (1 + abs(r_n));
       }
       if ( C.limiter == 2 ) //Van Albada 
       {
