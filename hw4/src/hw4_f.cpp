@@ -426,6 +426,7 @@ void iteration(
 {
 
   MatrixXd vol = Ac*(dx); //vol now for N+2*numghost
+  //cout << std::setprecision(14) << vol.transpose() << endl;
   MatrixXd dtvec = C.cfl*dx*Lambda_mcenter.cwiseInverse();//get the dt vector from lambda's
   double dt = dtvec.minCoeff();//grab the minimum value of the matrix 
   timestep = dt;

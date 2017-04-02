@@ -27,7 +27,7 @@ int main()
   consts.gamma = 1.4; 
   consts.outflow = true; //True is supersonic outflow
   consts.cfl = 0.1; //cfl is 0.1 but can be changed after a certain number of iterations
-  consts.upwind = 1; // 0 - Jameson Damping, 1 - Van Leer flux, 2 - Roe flux
+  consts.upwind = 2; // 0 - Jameson Damping, 1 - Van Leer flux, 2 - Roe flux
   consts.limiter = 2; // limiters: 0 for no 1 for van leer and 2 for van albada
   //////////////////////// START of SIMULATIONS ////////////////////////////
   //This main file is kept purposely really short and it just tells these two files to run their respective sims (exact solution, supersonic outflow, and TBD subsonic function
@@ -96,6 +96,7 @@ void quasi1Dnozzle(constants C)
   double L2normold2 = 10.0;
   double L2normold3 = 10.0;
   double L2normold4 = 10.0;
+  //
   //for(int n= 0 ;  n < nmax; n++)
   for(int n= 0 ;  n < 2; n++)
   {
@@ -132,26 +133,29 @@ void quasi1Dnozzle(constants C)
       // will need to be filled with the compute_upwind_VLR
       compute_upwind_VLR(V_L, V_R, V, C);
       //cout<< std::setprecision(14) << V_L[rhoid].transpose() << endl;
-      cout<< std::setprecision(14) << V_R[rhoid].transpose() << endl;
+      //cout<< std::setprecision(14) << V_R[pid].transpose() << endl;
       // Now with the left and right state values compute the fluxes
     }
     if (C.upwind == 1) // Van Leer Flux vector splitting
       compute_F_vanleer(F, V_L, V_R, C);
-      //cout << F[pid].transpose()<< endl;
     if (C.upwind == 2) // Roe Flux diff splitting
       compute_F_roe(F, V_L, V_R, C);
+      //cout << std::setprecision(14) << F[rhoid].transpose()<< endl;
       //cout << F[pid].transpose()<< endl;
-
+    
     //compute the S source term on the domain
     compute_source(S, V, xc);
 
     //NOTE Ai is defined at every interface including ghost cells!!
     //Compute residuals to be used in norms and for completing a step
     compute_residual(Res, S, F, Ai);
-
     //Execute 1 time iteration 
     double timestep;
+    // DESCREPENCY IN ITERATION
+
+    cout<< std::setprecision(14) << Res[1].transpose() << endl;
     iteration(U, timestep, Res, Ac, Lambda_mcenter, C);
+
     t+=timestep;
     //Update the primitive variables with the new U
     constoprim(V, U, C);
@@ -199,7 +203,10 @@ void quasi1Dnozzle(constants C)
     }
     if (std::isnan(L2normrel(0,rhoid)) || std::isnan(L2normrel(0,uid)) ||
         std::isnan(L2normrel(0,pid)))
+    {
+      cout << "NAN ERROR" << endl;
       break;
+    }
     if (n % 100 == 0)
     {
       //OUTPUT RESIDUAL HISTORY
