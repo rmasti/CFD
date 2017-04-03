@@ -27,16 +27,16 @@ int main()
   consts.gamma = 1.4; 
   consts.outflow = true; //True is supersonic outflow
   consts.cfl = 0.1; //cfl is 0.1 but can be changed after a certain number of iterations
-  consts.upwind = 2; // 0 - Jameson Damping, 1 - Van Leer flux, 2 - Roe flux
-  consts.limiter = 2; // limiters: 0 for no 1 for van leer and 2 for van albada
+  consts.upwind = 1; // 0 - Jameson Damping, 1 - Van Leer flux, 2 - Roe flux
+  consts.limiter = 1; // limiters: 0 for no 1 for van leer and 2 for van albada
   //////////////////////// START of SIMULATIONS ////////////////////////////
   //This main file is kept purposely really short and it just tells these two files to run their respective sims (exact solution, supersonic outflow, and TBD subsonic function
 
   isentropic_exact(consts);// Pass the constants to isentropic exact and isentropic 
   //quasi1Dnozzle(consts); // Run with supersonic outflow
 
-  //consts.pb = 120.00*1000.0; //Pa
-  //consts.outflow = false; //subsonic outflow condition
+  consts.pb = 120.00*1000.0; //Pa
+  consts.outflow = false; //subsonic outflow condition
   quasi1Dnozzle(consts); // Run with subsonic outflow
   //////////////////////// END of SIMULATIONS ////////////////////////////
 
@@ -58,6 +58,7 @@ void quasi1Dnozzle(constants C)
   //Applies the A_x(x) function to all elements of xcenter the same can
   //be done for xinterface if need be;
   MatrixXd Ac = xc.unaryExpr(&A_x);
+  MatrixXd vol = Ac*dx;
   MatrixXd Ai = xi.unaryExpr(&A_x);
   //Similarly this can be done for the mach number at the start only for
   //center cell values
@@ -89,7 +90,7 @@ void quasi1Dnozzle(constants C)
 
   //initialize primitive variable extrapolate and then apply B.C's;
   initialize(V, Mc, C);
-
+  primtocons(U, V, C);
   ///////////////// MAIN LOOP ////////////////
   double t = 0.0;
   double L2normold1 = 10.0;
@@ -97,12 +98,23 @@ void quasi1Dnozzle(constants C)
   double L2normold3 = 10.0;
   double L2normold4 = 10.0;
   //
-  //for(int n= 0 ;  n < nmax; n++)
-  for(int n= 0 ;  n < 2; n++)
+  //for(int n= 0 ;  n < 5; n++)
+  for(int n= 0 ;  n < nmax; n++)
   {
-    //if (n == 90000) C.limiter = 0;
+    if (n == 150000) C.limiter = 0;
     // Beginning of Iteration Loop
     //extrapolate the interior cells to the ghost cells
+
+    /*
+    output_array("V1_before_bcext", V[rhoid], n);
+    output_array("V2_before_bcext", V[uid], n);
+    output_array("V3_before_bcext", V[pid], n);
+ 
+    output_array("U1_before_bcext", U[rhoid], n);
+    output_array("U2_before_bcext", U[rhouid], n);
+    output_array("U3_before_bcext", U[rhoetid], n);
+    */
+    
     extrapolate_to_ghost(V);
 
     //Apply Boundary Conditions
@@ -114,13 +126,25 @@ void quasi1Dnozzle(constants C)
 
     //After extrap and boundary convert V to U
     primtocons(U, V, C);
+
+    /*
+    output_array("V1_after_bcext", V[rhoid], n);
+    output_array("V2_after_bcext", V[uid], n);
+    output_array("V3_after_bcext", V[pid], n);
+ 
+
+    output_array("U1_after_bcext", U[rhoid], n);
+    output_array("U2_after_bcext", U[rhouid], n);
+    output_array("U3_after_bcext", U[rhoetid], n);
+    */
+
     //cout << std::setprecision(14) << V[uid].transpose() << endl;
 
     if (C.upwind == 0) // Jameson damping
     {
-      //Reconstruct to find Uinterface and lambdainterface
       MatrixXd Lambda_minterface(1, N+1);//ONLY AT INTERFACES OF INTEREST
       reconstruct(Uinterface, Lambda_minterface, U, Lambda_mcenter);
+      //Reconstruct to find Uinterface and lambdainterface
       //Now with reconstructed values compute flux
       compute_F_jameson(F, Uinterface, C);
       //Find the artificial viscosity flux d
@@ -137,9 +161,15 @@ void quasi1Dnozzle(constants C)
       // Now with the left and right state values compute the fluxes
     }
     if (C.upwind == 1) // Van Leer Flux vector splitting
+    {
       compute_F_vanleer(F, V_L, V_R, C);
+     //cout<< std::setprecision(14) << F[0].transpose() << endl;
+
+    }
     if (C.upwind == 2) // Roe Flux diff splitting
+    {
       compute_F_roe(F, V_L, V_R, C);
+    }
       //cout << std::setprecision(14) << F[rhoid].transpose()<< endl;
       //cout << F[pid].transpose()<< endl;
     
@@ -153,13 +183,35 @@ void quasi1Dnozzle(constants C)
     double timestep;
     // DESCREPENCY IN ITERATION
 
-    cout<< std::setprecision(14) << Res[1].transpose() << endl;
-    iteration(U, timestep, Res, Ac, Lambda_mcenter, C);
+    //cout<< std::setprecision(14) << Res[3].transpose() << endl;
 
+    /*
+    output_array("U1_before_iter", U[rhoid], n);
+    output_array("U2_before_iter", U[rhouid], n);
+    output_array("U3_before_iter", U[rhoetid], n);
+    */
+ 
+    iteration(U, timestep, Res, vol, Lambda_mcenter, C);
+/*
+    output_array("U1_after_iter", U[rhoid], n);
+    output_array("U2_after_iter", U[rhouid], n);
+    output_array("U3_after_iter", U[rhoetid], n);
+
+    //cout<< std::setprecision(14) << U[0].transpose() << endl;
+    output_array("F1_iter", F[frhouid], n);
+    output_array("F2_iter", U[frhouuid], n);
+    output_array("F3_iter", U[frhouhtid], n);
+
+    output_array("Res1_iter", Res[rhoid], n);
+    output_array("Res2_iter", Res[rhouid], n);
+    output_array("Res3_iter", Res[rhoetid], n);
+    */
+   
     t+=timestep;
     //Update the primitive variables with the new U
     constoprim(V, U, C);
     // End of Iteration Loop
+
 
     /////////////// OUTPUT SOLNS & RESIDUALS ///////////////
     MatrixXd L2norm(1, neq);
@@ -201,12 +253,14 @@ void quasi1Dnozzle(constants C)
       }
       break;
     }
+    /*
     if (std::isnan(L2normrel(0,rhoid)) || std::isnan(L2normrel(0,uid)) ||
         std::isnan(L2normrel(0,pid)))
     {
       cout << "NAN ERROR" << endl;
       break;
     }
+    */
     if (n % 100 == 0)
     {
       //OUTPUT RESIDUAL HISTORY

@@ -8,6 +8,7 @@
 #define hw4_H_
 #include <fstream>
 #include <iostream>
+#include <stdio.h>
 #include <Eigen/Dense>
 #include "math.h"
 #include <iomanip>
@@ -17,7 +18,7 @@
 using namespace std;
 using namespace Eigen;
 
-#define N 10
+#define N 64
 #define xmax 1.5
 #define xmin -1.5
 #define xmax_dom 1.0
@@ -114,7 +115,7 @@ void compute_residual(MatrixXd* Res, MatrixXd* S, MatrixXd* F,
      MatrixXd& Ai);
 
 void iteration(MatrixXd* U, double& timestep, MatrixXd* Res, 
-    MatrixXd& Ac, MatrixXd& Lambda_mcenter, constants C);
+    MatrixXd& vol, MatrixXd& Lambda_mcenter, constants C);
 
 void constoprim(MatrixXd* V, MatrixXd* U, constants C);
 
@@ -140,4 +141,5 @@ void compute_F_vanleer(MatrixXd* F, MatrixXd* V_L,
 
 void compute_F_roe(MatrixXd* F, MatrixXd* V_L, MatrixXd* V_R, constants C);
 
+void output_array(string FileName,MatrixXd& out, int iteration);
 #endif

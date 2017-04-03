@@ -8,6 +8,24 @@
  */
 #include "hw4.hpp" //structure templates and func prototypes
 
+void output_array(
+    // This function will output any eigen matrix into a file
+    string FileName,                  //input - File  
+    MatrixXd& out,                    //input - matrix
+    int n)                    //input - iteration
+{
+  ostringstream StrConvert;
+  StrConvert << n;
+  string num_iter = StrConvert.str();
+  string Address = "./debug/";
+  string Suffix = ".txt";
+  Address = Address + FileName + num_iter + Suffix;
+  ofstream outfile;
+  outfile.open(Address.c_str());
+  outfile << setprecision(14) << out.transpose() << endl;
+}
+
+
 void compute_F_roe(
     // This function computes the F fluxes using Roe's flux diff scheme with Roe-averaged vars
     MatrixXd* F,                      //output - Flux at all interface of interest N+1     
@@ -294,7 +312,6 @@ void compute_upwind_VLR(
           (1.0-upwind_kappa)*Psi_Neg[eq](row,i_int+1)*(V[eq](row,i_cells+2)-V[eq](row,i_cells+1))
           + (1.0+upwind_kappa)*Psi_Pos[eq](row,i_int)*(V[eq](row,i_cells+1)-V[eq](row,i_cells))
           );
-
       //cout << std::setprecision(14) << " Change in V: Vo = " << V[eq](row,i_cells) 
        // << " V_L = " << V_L[eq](row,i) << " V_R = " << V_R[eq](row,i) << endl;
     }
@@ -420,16 +437,17 @@ void iteration(
     MatrixXd* U,                       //output - Updates Conserved Variable
     double& timestep,                  //output - timestep for keeping track of t
     MatrixXd* Res,                     //input - Residual of array size N
-    MatrixXd& Ac,                      //input - Area at cell centers for 1d
-    MatrixXd& Lambda_mcenter,          //input - Lambda max at center values for time step
+    MatrixXd& vol,                     //input - volume at cell centers for 1d
+    MatrixXd& Lambda_mcenter,       //input - Lambda max at center values for time step
     constants C)                       //input - constants for cfl
 {
 
-  MatrixXd vol = Ac*(dx); //vol now for N+2*numghost
   //cout << std::setprecision(14) << vol.transpose() << endl;
   MatrixXd dtvec = C.cfl*dx*Lambda_mcenter.cwiseInverse();//get the dt vector from lambda's
   double dt = dtvec.minCoeff();//grab the minimum value of the matrix 
   timestep = dt;
+  //dt = 2.0e-5;
+  //cout << std::setprecision(14) << "dt = " << dt << endl;
   int row = 0;
   for(int i = 0 ; i < Res[rhoid].cols(); i++)
   {
@@ -625,14 +643,14 @@ void outflow_boundary_condition(
     double P_left = V[pid](row, end-num_ghost_cells); //last interior cell
     for(int i = N+num_ghost_cells; i < V[pid].cols() ;i++)
     {
-      V[pid](row, i) = C.pb;
+      V[pid](row, i) = 2.0*P_middle-P_left;
       P_left = V[pid](row, i-1);
-      P_middle = V[pid](row, i); 
+      //P_middle = V[pid](row, i); 
     }
   }
 }
 
-void inflow_boundary_condition(
+void inflow_boundary_condition_M(
     //this specifies inflow only
     MatrixXd* V,                                    //output - primitive variables
     constants C)                                    //input - constants
@@ -656,6 +674,25 @@ void inflow_boundary_condition(
     M_1 = M_0;
   }
 }
+
+
+void inflow_boundary_condition(
+    //this specifies inflow only
+    MatrixXd* V,                                    //output - primitive variables
+    constants C)                                    //input - constants
+{
+  int row = 0;  
+  double phi;
+  for (int i = 0; i < num_ghost_cells; i++)
+  {
+    phi = C.T0/( C.T0 - (C.gamma - 1)*V[uid](row,i)*V[uid](row,i)/(2.0*C.gamma*R) );
+    V[pid](row,i) = C.p0/(pow(phi, C.gamma/(C.gamma-1)));
+    V[rhoid](row,i) = C.p0/(pow(phi, 1.0/(C.gamma-1)))/(R*C.T0);
+  }
+}
+
+
+
 
 void set_boundary_conditions(
     //This function will apply boundary conditions to the primitive var array

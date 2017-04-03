@@ -90,14 +90,14 @@ int main()
   const double gamma = 1.4;     
   const double R = 287.058;              // specific gas constatin in J/kg*K
 
-  const int n = 256;                     // Number of cells. Make sure n is dividable by 6, so that there is a...
+  const int n = 10;                     // Number of cells. Make sure n is dividable by 6, so that there is a...
                                          //...face at the throat and the end of the two straight sections
   const double xmin = -1.5;              // Domain left boundary
   const double xmax = 1.5;               // Domain right boundary
 
   const int num_ghost = 3;               // ghost cells used at each boundary.
 
-  const int WriteInterval = 1e4;
+  const int WriteInterval = 1;
   
   double upwind_eps = 1;              // set 0 for 1st order. set 1 for 2nd or higher order
   double upwind_kappa = -1;           // -1 for fully-upwinded scheme; 0 for upwind-biased scheme; 1/3 for
@@ -105,7 +105,7 @@ int main()
                                       // Leonad's QUICK scheme; 1 for central difference scheme
   
   double CFL = 0.1;                  // CFL number
-  int max_iter = 1e6;                // max number of iteration
+  int max_iter = 5;                // max number of iteration
   double Final_res = 1e-12;          // final residual
   double iter = 0;                   // iteration counter
  
@@ -193,7 +193,7 @@ int main()
       Volumn[i] = dx[i]*Ac[i];
     }
   A[n] = Calc_Area(x[n]);
-  Min_dx = *min_element(begin(dx),end(dx));     // The min dx in the domain
+  Min_dx = *min_element(dx,dx+n);     // The min dx in the domain
 
   //***********************************************************************************************************//
   //                                              Initialization                                               //
@@ -225,8 +225,12 @@ int main()
   //---------------Compute Flux---------------//
   Calc_lambda_max(n, num_ghost, gamma, rho_tomb, u_tomb, P_tomb, ptr_lambda_max ); // calc lambda_max...
                                                                                      // ...at every cell edge 
-  Max_lambda = *max_element(begin(lambda_max)+num_ghost,end(lambda_max)-num_ghost);// The max lambda in the domain
-  
+  Max_lambda = *max_element(lambda_max, lambda_max+n+1);// The max lambda in the domain
+       OutputSingleArray("U1_after", n+2*num_ghost, xc_tomb, U1_tomb, iter);
+      OutputSingleArray("U2_after", n+2*num_ghost, xc_tomb, U2_tomb, iter);
+      OutputSingleArray("U3_after", n+2*num_ghost, xc_tomb, U3_tomb, iter);
+
+ 
   if (flag_flux == 0) { // central flux + jampson damping
     Switch_Consrv2Flux(n, num_ghost, gamma, U1_tomb, U2_tomb, U3_tomb, ptr_F1, ptr_F2, ptr_F3);
     Add_ArtiDissipation(n, num_ghost, lambda_max, P_tomb, U1_tomb, U2_tomb, U3_tomb, ptr_F1, ptr_F2, ptr_F3);
@@ -273,7 +277,7 @@ int main()
   
   cout<<"\n**************Iteration = "<<iter<<" **************"<<endl;
   CoutTitle("Residuals", "=", "short");
-  cout<<" * dt:                         "<<dt<<endl;
+  cout<< std::setprecision(14)<<" * dt:                         "<<dt<<endl;
   cout<<" * Mass equation residual:     "<<L2norm1<<endl;
   cout<<" * Momentum equation residual: "<<L2norm2<<endl;
   cout<<" * Energy equation residual:   "<<L2norm3<<endl;
@@ -371,6 +375,7 @@ int main()
   
   //---------------initialize dt---------------//
   dt = CFL*Min_dx/Max_lambda;
+  dt = 2.0e-5;
   
   while (iter < max_iter)
     {
@@ -381,6 +386,11 @@ int main()
 	  U2[i] = U2[i] - (dt/Volumn[i])*Res2[i];
 	  U3[i] = U3[i] - (dt/Volumn[i])*Res3[i];
 	}
+      OutputSingleArray("U1_after", n+2*num_ghost, xc_tomb, U1_tomb, iter);
+      OutputSingleArray("U2_after", n+2*num_ghost, xc_tomb, U2_tomb, iter);
+      OutputSingleArray("U3_after", n+2*num_ghost, xc_tomb, U3_tomb, iter);
+
+
       Switch_Consrv2Prm(n, gamma, U1, U2, U3, ptr_rho, ptr_u, ptr_P);
       
       //----------Set Boundary Conditions---------//
@@ -400,7 +410,9 @@ int main()
       //---------------Compute Flux---------------//
       Calc_lambda_max(n, num_ghost, gamma, rho_tomb, u_tomb, P_tomb, ptr_lambda_max);  // calc lambda_max...
                                                                                        // ...at every cell edge 
-      Max_lambda = *max_element(begin(lambda_max)+num_ghost,end(lambda_max)-num_ghost);
+      Max_lambda = *max_element(lambda_max, lambda_max+n+1);
+
+
 
       if (flag_flux == 0) { // central flux + jampson damping
 	Switch_Consrv2Flux(n, num_ghost, gamma, U1_tomb, U2_tomb, U3_tomb, ptr_F1, ptr_F2, ptr_F3);
@@ -493,7 +505,9 @@ int main()
 	}
 
       //---------------update dt---------------//
-      dt = CFL*Min_dx/Max_lambda;
+     dt = CFL*Min_dx/Max_lambda;
+     dt = 2.0e-5;
+      
       
       // Print out L2 norm of residuals
       if ((1.0*iter/WriteInterval)-int(1.0*iter/WriteInterval) ==0) {
@@ -672,7 +686,7 @@ void Ini_rho(int MeshSize, double P0, double T0, double phi[], double R, double 
 
 void Ini_u(int MeshSize, double Mach[], double P[], double rho[], double gamma, double *ptr_u)
 {
-  for (int i &= 0; i < MeshSize; i++) {
+  for (int i = 0; i < MeshSize; i++) {
     *(ptr_u+i) = Mach[i]*sqrt(gamma*P[i]/rho[i]);
   }
 }
@@ -1138,7 +1152,8 @@ void Calc_upwind_Flux_Roe(int MeshSize, double gamma, double R, double rho_L[], 
     F3_L = rho_L[i]*u_L[i]*ht_L;
     F3_R = rho_R[i]*u_R[i]*ht_R;
 
-    ptr_F1[i] = 0.5*(F1_L + F1_R) - 0.5*( abs(abs_lambda1_Roe)*dw1*r1_Roe[0] + abs(abs_lambda2_Roe)*dw2*r2_Roe[0] + abs(abs_lambda3_Roe)*dw3*r3_Roe[0]);
+    ptr_F1[i] = 0.5*(F1_L + F1_R) - 0.5*( abs(abs_lambda1_Roe)*dw1*r1_Roe[0] + abs(abs_lambda2_Roe)*dw2*r2_Roe[0]
+					  + abs(abs_lambda3_Roe)*dw3*r3_Roe[0]);
     ptr_F2[i] = 0.5*(F2_L + F2_R) - 0.5*( abs(abs_lambda1_Roe)*dw1*r1_Roe[1] + abs(abs_lambda2_Roe)*dw2*r2_Roe[1]
 					  + abs(abs_lambda3_Roe)*dw3*r3_Roe[1]);
     ptr_F3[i] = 0.5*(F3_L + F3_R) - 0.5*( abs(abs_lambda1_Roe)*dw1*r1_Roe[2] + abs(abs_lambda2_Roe)*dw2*r2_Roe[2]
@@ -1160,7 +1175,7 @@ void OutputSingleArray(string FileName, int ArrSize, double x[], double Arr[], i
   Address = Address + FileName + num_iter + Suffix;
   
   ofstream outfile;
-  outfile.open(Address);
+  outfile.open(Address.c_str());
 
   for (int i = 0; i <ArrSize; i++)
     {
@@ -1176,7 +1191,7 @@ void OutputSingleVector(string FileName, int VecSize, vector<double> Vec)
   Address = Address + FileName + Suffix;
   
   ofstream outfile;
-  outfile.open(Address);
+  outfile.open(Address.c_str());
 
   for (int i = 0; i <VecSize; i++)
     {
