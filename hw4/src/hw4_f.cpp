@@ -12,17 +12,17 @@ void output_array(
     // This function will output any eigen matrix into a file
     string FileName,                  //input - File  
     MatrixXd& out,                    //input - matrix
-    int n)                    //input - iteration
+    int n)                            //input - iteration
 {
   ostringstream StrConvert;
-  StrConvert << n;
-  string num_iter = StrConvert.str();
-  string Address = "./debug/";
-  string Suffix = ".txt";
-  Address = Address + FileName + num_iter + Suffix;
-  ofstream outfile;
-  outfile.open(Address.c_str());
-  outfile << setprecision(14) << out.transpose() << endl;
+  StrConvert << n; // import n as an ostringstream
+  string num_iter = StrConvert.str();// convert to string
+  string Address = "./debug/";// add together
+  string Suffix = ".txt"; 
+  Address = Address + FileName + num_iter + Suffix; // can combine strings
+  ofstream outfile; // output
+  outfile.open(Address.c_str()); // access string component
+  outfile << setprecision(14) << out.transpose() << endl; // output transpose
 }
 
 
@@ -277,28 +277,26 @@ void compute_upwind_VLR(
     // Compute the upwind Left and right primvar states 
     MatrixXd* V_L,                    //output - Left primvar state at interfaces of interest           
     MatrixXd* V_R,                    //output - Right primvar state at interfaces of interest
+    MatrixXd* Psi_Pos,                //output - psi at interfaces for limiter freezing
+    MatrixXd* Psi_Neg,                //output - psi neg for limiter freezing
     MatrixXd* V,                      //input - Primvar at all cell centers
-    constants C)                      //input - Choose limiter                     
+    constants C,                      //input - Choose limiter                     
+    bool freeze)                      //input - Freeze limiter                    
 {
   // Create the psi_positive and psi_negative and define at all interfaces So N+ghost+1
   //
   int row = 0;
-  MatrixXd*  Psi_Pos=new MatrixXd[neq];
-  MatrixXd*  Psi_Neg=new MatrixXd[neq];
-  for (int eq = 0 ; eq < neq; eq++)
-  {
-    Psi_Pos[eq].resize(1,V[rhoid].cols()+1); //Every interface can have a psi value*****
-    Psi_Neg[eq].resize(1,V[rhoid].cols()+1); //Also can have negative values
-  }
   // At this point Psi's have the correct size, but will just need to be filled in now
-  compute_psi_pn(Psi_Pos, Psi_Neg, V, C);
 
+  // If not freeze then compute Psi_Pos and Psi_Neg
+  // If true freeze the limiter and do not update it
+  if (freeze==false)
+    compute_psi_pn(Psi_Pos, Psi_Neg, V, C);
   // Now the psi values are known at all interface values now fill in LR states
   for (int i = 0 ; i < V_L[rhoid].cols(); i++)
   {
     int i_cells = (num_ghost_cells-1) + i; // start at i = 2 where i+1/2 starts 
     int i_int = num_ghost_cells+i; // starts at the 3rd interface
-    //cout << " i = " << i << " i_cell = " << i_cells << " i_int = " << i_int<< endl;
     for (int eq = 0 ; eq < neq; eq++)
     {    
       // Note i_cells + 1 is the index for the i+1/2 value of psi
@@ -312,8 +310,6 @@ void compute_upwind_VLR(
           (1.0-upwind_kappa)*Psi_Neg[eq](row,i_int+1)*(V[eq](row,i_cells+2)-V[eq](row,i_cells+1))
           + (1.0+upwind_kappa)*Psi_Pos[eq](row,i_int)*(V[eq](row,i_cells+1)-V[eq](row,i_cells))
           );
-      //cout << std::setprecision(14) << " Change in V: Vo = " << V[eq](row,i_cells) 
-       // << " V_L = " << V_L[eq](row,i) << " V_R = " << V_R[eq](row,i) << endl;
     }
   }
 }
@@ -368,18 +364,28 @@ void compute_psi_pn(
         else
           Psi_Neg[eq](row,i+1) = (r_n + r_n*r_n) / (1 + r_n*r_n);
       }
+      if ( C.limiter == 3 ) //Ospre 
+      {
+        Psi_Pos[eq](row,i+1) = 1.5*(r_p*r_p + r_p) / (1 + r_p + r_p*r_p);
+        Psi_Neg[eq](row,i+1) = 1.5*(r_n*r_n + r_n) / (1 + r_n + r_n*r_n);
+      }
+      if ( C.limiter == 4 ) // monotized central least diffusive
+      {
+        Psi_Pos[eq](row,i+1) = mymax(0,mymin(2.0*r_p,mymin(0.5*(1+r_p),2)));
+        Psi_Neg[eq](row,i+1) = mymax(0,mymin(2.0*r_n,mymin(0.5*(1+r_n),2)));
+      }
+      if ( C.limiter == 5 ) // minmod limiter
+      {
+        Psi_Pos[eq](row,i+1) = mymax(0,mymin(1.0,r_p));
+        Psi_Neg[eq](row,i+1) = mymax(0,mymin(1.0,r_n));
+      }
+      if ( C.limiter == 6 ) // Superbee
+      {
+        Psi_Pos[eq](row,i+1) = mymax(0,mymax(mymin(2.0*r_p,1.0),mymin(r_p,2.0)));
+        Psi_Neg[eq](row,i+1) = mymax(0,mymax(mymin(2.0*r_n,1.0),mymin(r_n,2.0)));
+      }
     }
-
   }
-
-
-  //cout << "psipos " << endl;
-  //cout << std::setprecision(14) << Psi_Pos[rhoid].transpose() << endl;
-
-  //cout << "psineg " << endl;
-  //cout << std::setprecision(14) << Psi_Neg[rhoid].transpose() << endl;
-
-
 }
 
 void write_solution(

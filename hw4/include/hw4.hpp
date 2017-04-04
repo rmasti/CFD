@@ -25,13 +25,14 @@ using namespace Eigen;
 #define xmin_dom -1.0
 #define num_ghost_cells 3
 #define R 287.058
-#define kappa2 (1.0/3.0)
-#define kappa4 (1.0/48.0)
+#define kappa2 (1.0/2.0)
+#define kappa4 (1.0/32.0)
 #define upwind_kappa -1.0
 #define upwind_epsilon 1.0
 #define dx (xmax-xmin)/(N)
 #define localdt false
 #define nmax 10000000
+#define nwriteout 1000
 #define mymax(a,b) ((a>b)?a:b)
 #define mymin(a,b) ((a<b)?a:b)
 
@@ -128,8 +129,8 @@ void compute_norms(MatrixXd& L2norm, MatrixXd* Res);
 void write_solution(FILE* &file, MatrixXd& xc, MatrixXd& Ac,
     MatrixXd* V, MatrixXd* U, constants C);
 
-void compute_upwind_VLR(MatrixXd* V_L, MatrixXd* V_R, MatrixXd* V,
-    constants C);
+void compute_upwind_VLR(MatrixXd* V_L, MatrixXd* V_R, MatrixXd* Psi_Pos,
+    MatrixXd* Psi_Neg, MatrixXd* V, constants C, bool freeze);
 
 void compute_psi_pn(MatrixXd* Psi_Pos, MatrixXd* Psi_Neg, MatrixXd* V,
     constants C);
