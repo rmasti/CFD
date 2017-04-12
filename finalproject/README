@@ -20,8 +20,11 @@ In this directory there is the following structure:
 |                   Curvilinear (1)
 |                   Inlet       (2)
 |                   NACA        (3)
+|   InFiles   -   directory containing input files that will be used
+|                   to read in parameters so continuous compiling not
+|                   needed
 |                                                                  
-|    MakeFile  -  run make to compile the code with gcc? or g++?
+|   MakeFile  -   run make to compile the code with gcc? or g++?
 |                    run make tests to run unittests
 |
 /__________________________________________________________________/

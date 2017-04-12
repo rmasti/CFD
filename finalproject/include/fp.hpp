@@ -6,6 +6,7 @@
  */
 #ifndef hw4_H_
 #define hw4_H_
+
 #include <fstream>
 #include <iostream>
 #include <stdio.h>
@@ -14,6 +15,7 @@
 #include <iomanip>
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 using namespace std;
 using namespace Eigen;
@@ -67,13 +69,21 @@ struct constants
   int wint;                // Write Interval
   int pint;                // Print Interval
   int num_ghost;           // number of ghost cells
+  int localdt;            // Use local time stepping? or false use global time stepping
   double tol;              // Residual tolerance 1e-10 typical
   double cfl;              // CFL number used globally
 };
 
 ////////////// FUNCTION PROTOTYPES ////////////////////
+constants loadInputFile(string FileName);
+double searchInputFile(string FileName, string Var);
+string buildCaseFolder(constants C);
+
+void runCase(constants C);
+void inputMesh(MatrixXd& xn, MatrixXd& yn, MatrixXd& zn, MatrixXd& xc, MatrixXd& yc, MatrixXd& zc, constants C);
 
 
+string readMeshName(constants C);
 
 
 #endif
