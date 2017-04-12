@@ -21,7 +21,7 @@ In this directory there is the following structure:
 |                   Inlet       (2)
 |                   NACA        (3)
 |                                                                  
-|    MakeFile  -   run make to compile the code with gcc? or g++?
+|    MakeFile  -  run make to compile the code with gcc? or g++?
 |                    run make tests to run unittests
 |
 /__________________________________________________________________/
