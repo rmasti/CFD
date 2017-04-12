@@ -2482,6 +2482,7 @@ void InputMesh(int &ni, int &nj, int &nk, vector<vector<double> > &x, vector<vec
   for (int j=0; j<nj+1; j++) {
     for (int i=0; i<ni+1; i++) {
       x[i][j] = data[x_index];
+      //cout << x[i][j] << " i " << i << " j " << j << endl;
       y[i][j] = data[y_index];
       z[i][j] = data[z_index];
       x_index++;

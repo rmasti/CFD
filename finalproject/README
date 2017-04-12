@@ -16,7 +16,7 @@ In this directory there is the following structure:
 |
 |   Supp      -   directory containing supplemental docs (no infl)
 |
-|   grids     -   directory containing grids for all cases
+|   grids     -   directory (unzip tarball) has grids for all cases
 |                   Curvilinear (1)
 |                   Inlet       (2)
 |                   NACA        (3)
