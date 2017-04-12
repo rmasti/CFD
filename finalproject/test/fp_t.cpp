@@ -1,11 +1,11 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
-#include "hw4.hpp"
+#include "fp.hpp"
 #define reltol 1.0e-12
 using namespace std;
 
 
-
+/*
 TEST_CASE( "Mtoprim", "[MtoV]" ) {
   constants C;
   C.p0 = 500000.0;
@@ -46,3 +46,4 @@ TEST_CASE( "Test M function at x = -0.21315", "[M]" ) {
   double predicted = 0.808165;
   REQUIRE( abs(M - predicted)/predicted <= reltol );
 }
+*/

@@ -1,0 +1,28 @@
+In this directory there is the following structure:
+/__________________________________________________________________/
+| 
+|   output    -   directory for outputting simulated data
+|
+|   debug     -   directory for ouputting temporary arrays for 
+|                   the debuggin process, and also possible 
+|                   a log file
+|
+|   include   -   directory containing the header files 
+|
+|   src       -   directory containing main cpp and function 
+|                   cpp file
+|
+|   test      -   directory containing the unittests
+|
+|   Supp      -   directory containing supplemental docs (no infl)
+|
+|   grids     -   directory containing grids for all cases
+|                   Curvilinear (1)
+|                   Inlet       (2)
+|                   NACA        (3)
+|                                                                  
+|    MakeFile  -   run make to compile the code with gcc? or g++?
+|                    run make tests to run unittests
+|
+/__________________________________________________________________/
+

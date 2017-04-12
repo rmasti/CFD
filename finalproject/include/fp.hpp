@@ -18,129 +18,62 @@
 using namespace std;
 using namespace Eigen;
 
-#define N 64
-#define xmax 1.5
-#define xmin -1.5
-#define xmax_dom 1.0
-#define xmin_dom -1.0
-#define num_ghost_cells 3
-#define R 287.058
-#define kappa2 (1.0/2.0)
-#define kappa4 (1.0/32.0)
-#define upwind_kappa -1.0
-#define upwind_epsilon 1.0
-#define dx (xmax-xmin)/(N)
-#define localdt false
-#define nmax 10000000
-#define nwriteout 1000
+// DEFINE MAXMIN FUNCTION
+
 #define mymax(a,b) ((a>b)?a:b)
 #define mymin(a,b) ((a<b)?a:b)
 
-#define rhoid  0
-#define uid 1
-#define vid 2
-#define pid 3
-#define rhouid 1
-#define rhovid 2
-#define rhoetid 3
-#define frhouid 0
-#define frhouuid 1
-#define frhovid 2
-#define frhouhtid 3
-#define neq 4
+// DEFINE CONSTANTS
+
+#define R 287.058
+#define GAMMA 1.4
+#define PI 3.14159265359
+#define NEQ 4
+
+// DEFINE ELEMENT IDENTIFIERS
+
+#define rhoid  0           // V1 and U1
+#define uid 1              // V2
+#define vid 2              // V3
+#define pid 3              // V4
+
+#define rhouid 1           // U2
+#define rhovid 2           // U3
+#define rhoetid 3          // U4
+
+#define frhouid 0          // F1
+#define frhouuid 1         // F2
+#define frhouvid 2         // F3
+#define frhouhtid 3        // F4
+
+#define grhovid 0          // G1
+#define grhovvid 1         // G2
+#define grhouvid 2         // G3
+#define grhovhtid 3        // G4
 
 // CREATE STRUCTURE DEFINITION
 struct constants
 {
-  double p0;
-  double T0;
-  double A_t;
-  double tol;
-  double gamma;
-  bool outflow;
-  double pb; //back pressure
-  double cfl;
-  int upwind; //use 1 upwind VL flux or 0 artificial dissipation or 2 upwind Roe Flux
-  int limiter; // 0 for no, 1 for van leer, 2 for van albada
+  // Specify in main
+  int f_case;              // 1 for curvelinear MMS, 2 for 30 degree inlet, 3 for NACA airfoil
+  int f_mesh;              // 1-4 for all cases except curvelinear which has 1-6
+  int f_supersonic;        // 1 for subsonic, 2 for supersonic
+  int f_AOA;               // 1 for 0 deg, 2 for 8 deg. (only applicable for case_flag 3)
+  int f_upwind;            // 1 for Van Leer FVS, and 2 for Roe FDS
+  int f_limiter;           // 0 for limiter off, 1 for limiter on, 2 ....
+  int f_eps;               // Epsilon for upwind 0 for 1st order, 1 for 2nd order
+  int rk_order;            // Runge Kutta order (2nd or 4th order)
+  int nmax;                // Maximum iteration number 1e6 typical
+  int wint;                // Write Interval
+  int pint;                // Print Interval
+  int num_ghost;           // number of ghost cells
+  double tol;              // Residual tolerance 1e-10 typical
+  double cfl;              // CFL number used globally
 };
 
-////////////// Function Prototypes ////////////////////
-// Main
-void output_file_headers();
+////////////// FUNCTION PROTOTYPES ////////////////////
 
-void quasi1Dnozzle(constants C);
 
-// Function File
-double A_x(double x);
 
-double M_xinitial(double x);
 
-double dAdx(double x);
-
-void set_geometry(MatrixXd& xcenter, MatrixXd& xinterface);   
-
-void initialize(MatrixXd* V, MatrixXd &Mc, constants &C);
-
-double compute_soundspeed( double gamma,  double p, double rho);
-
-void Mtoprim(double& V1, double& V2, double& V3, double& V4, 
-    double& M, constants& C);
-
-double compute_soundspeed(double gamma, double p, double rho);
-
-void extrapolate_to_ghost(MatrixXd* Varr);
-
-void set_boundary_conditions( MatrixXd* V, constants C);
-
-void inflow_boundary_condition(MatrixXd* V, constants C);
-
-void outflow_boundary_condition(MatrixXd* V, constants C);
-
-void primtocons(MatrixXd* U, MatrixXd* V, constants C);     
-
-void compute_lambda(MatrixXd& Lamda_mcenter, MatrixXd* V, constants C);
-
-void reconstruct(MatrixXd* Uinterface, MatrixXd& Lambda_minterface, 
-    MatrixXd* U, MatrixXd& Lambda_mcenter); 
-
-void compute_F_jameson(MatrixXd* F, MatrixXd* U, constants C);
-
-void add_artificial_viscosity(MatrixXd* F, MatrixXd* V, 
-    MatrixXd* U, MatrixXd& Lambda_minterface);
-
-void compute_nu(MatrixXd& nu, MatrixXd* V);
-
-void compute_source(MatrixXd* S, MatrixXd* V, MatrixXd& xc);
-
-void compute_residual(MatrixXd* Res, MatrixXd* S, MatrixXd* F,
-     MatrixXd& Ai);
-
-void iteration(MatrixXd* U, double& timestep, MatrixXd* Res, 
-    MatrixXd& vol, MatrixXd& Lambda_mcenter, constants C);
-
-void constoprim(MatrixXd* V, MatrixXd* U, constants C);
-
-void exactsol(MatrixXd* V, MatrixXd& Ac, constants C);
-
-void isentropic_exact(constants C);
-
-void compute_norms(MatrixXd& L2norm, MatrixXd* Res);
-
-void write_solution(FILE* &file, MatrixXd& xc, MatrixXd& Ac,
-    MatrixXd* V, MatrixXd* U, constants C);
-
-void compute_upwind_VLR(MatrixXd* V_L, MatrixXd* V_R, MatrixXd* Psi_Pos,
-    MatrixXd* Psi_Neg, MatrixXd* V, constants C, bool freeze);
-
-void compute_psi_pn(MatrixXd* Psi_Pos, MatrixXd* Psi_Neg, MatrixXd* V,
-    constants C);
-
-double SIGN(double a, double b);
-
-void compute_F_vanleer(MatrixXd* F, MatrixXd* V_L, 
-    MatrixXd* V_R, constants C);
-
-void compute_F_roe(MatrixXd* F, MatrixXd* V_L, MatrixXd* V_R, constants C);
-
-void output_array(string FileName,MatrixXd& out, int iteration);
 #endif
