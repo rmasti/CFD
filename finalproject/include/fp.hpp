@@ -75,16 +75,32 @@ struct constants
   double cfl;              // CFL number used globally
 };
 
-////////////// FUNCTION PROTOTYPES ////////////////////
+////////////// FUNCTION PROTOTYPES ////////////////////o
+
 constants loadInputFile(string FileName);
+
 double searchInputFile(string FileName, string Var);
+
 string buildCaseFolder(constants C);
 
 void runCase(constants C);
-void inputMesh(MatrixXd& xn, MatrixXd& yn, MatrixXd& zn, MatrixXd& xc, MatrixXd& yc, MatrixXd& zc, constants C);
 
+void inputMesh(MatrixXd& xn, MatrixXd& yn, MatrixXd& zn, MatrixXd& xc, MatrixXd& yc, MatrixXd& zc, constants C);
 
 string readMeshName(constants C);
 
+void computeArea( MatrixXd& Ai, MatrixXd& Aj, MatrixXd& xn, MatrixXd& yn);
+
+void computeNormalVectors(MatrixXd& n_i_xhat, MatrixXd& n_i_yhat, MatrixXd& n_j_xhat, MatrixXd& n_j_yhat, MatrixXd& xn, MatrixXd& yn, MatrixXd& Ai, MatrixXd& Aj);
+
+void computeVolume(MatrixXd& Volume,MatrixXd& xn,MatrixXd& yn);
+
+void extrapCopyCoords(MatrixXd& xc_g, MatrixXd& yc_g, MatrixXd& xc, MatrixXd& yc, constants C);
+
+void initialize(MatrixXd* V, MatrixXd& xc_g, MatrixXd& yc_g, constants C);
+
+void computeTemperature(MatrixXd& T, MatrixXd* V);
+
+void outputArray(string FileName, MatrixXd& out, int n);
 
 #endif

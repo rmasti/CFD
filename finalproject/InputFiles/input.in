@@ -2,7 +2,7 @@ f_case: 1;           // 1 for curvelinear MMS, 2 for 30 degree inlet, 3 for NACA
 
 f_mesh: 1;           // 1-4 for all cases except the curvilinear which has 6
 
-f_supersonic: 1;     // 1 for supersonic, 2 for subsonic
+f_supersonic: 0;     // 1 for supersonic, 0 for subsonic
 
 f_AOA: 1;            // 1 for 0 deg, 2 for 8 deg for case 3 only
 

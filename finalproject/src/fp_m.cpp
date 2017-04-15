@@ -18,7 +18,7 @@ int main( int argc, char *argv[] )
   string Ouput_Folder = buildCaseFolder(C); // return the name of the folder it created for writing to
 
   /////////////////////////////////////////////////////////////
-  ////////////////////// SET GEOMETRY /////////////////////////
+  ////////////////////// READ THE MESH ////////////////////////
   /////////////////////////////////////////////////////////////
   MatrixXd xn; // x coord for interface or nodal points of the cells
   MatrixXd yn; // y coord for interface or nodal points of the cells
@@ -30,7 +30,17 @@ int main( int argc, char *argv[] )
 
   // GET COORDS
   inputMesh(xn, yn, zn, xc, yc, zc, C); // resize and fill coords
-
+  // Create xc and yc that includes ghost cells
+  MatrixXd xc_g(xc.rows()+2*C.num_ghost, xc.cols()+2*C.num_ghost);
+  MatrixXd yc_g(yc.rows()+2*C.num_ghost, yc.cols()+2*C.num_ghost);
+  extrapCopyCoords(xc_g, yc_g, xc, yc, C);
+ 
+  // Create temperature dist for sake of BC
+  MatrixXd T(xc_g.rows(), xc_g.cols()); // K
+  /////////////////////////////////////////////////////////////
+  ////////////////////// SETUP VARIABLES //////////////////////
+  /////////////////////////////////////////////////////////////
+ 
   // SETUP AREA's
   //i or x dir areas the columns of the matrix
   MatrixXd Ai(xc.rows(), xn.cols()); // sets (row,col) (j,i)
@@ -38,28 +48,34 @@ int main( int argc, char *argv[] )
   MatrixXd Aj(xn.rows(), xc.cols()); // sets (row,col) (j,i)
 
   // SETUP NORMAL VECS
-  //Ai normal vector has x and y components
-  MatrixXd n_i_xhat(xc.rows(), xn.cols());
-  MatrixXd n_i_yhat(xc.rows(), xn.cols());
+  //Ai normal vector has x and y components (so same size as Ai)
+  MatrixXd n_i_xhat(Ai.rows(), Ai.cols());
+  MatrixXd n_i_yhat(Ai.rows(), Ai.cols());
   //Aj normal vector has x and y componenets
-  MatrixXd n_j_xhat(xn.rows(), xc.cols());
-  MatrixXd n_j_yhat(xn.rows(), xc.cols());
+  MatrixXd n_j_xhat(Aj.rows(), Aj.cols());
+  MatrixXd n_j_yhat(Aj.rows(), Aj.cols());
+
+  // SETUP Max Speed AND DT
+  ////calcs max character..(MHD to) (soundspeed or fast magnetosonic speed)
+  MatrixXd MaxSpeed(xc.rows(), xc.cols());
+
+  MatrixXd Dt(xc.rows(), xc.cols()); //time step for local or global 
 
   // SETUP VOLUMES
-  MatrixXd Volumn(xc.rows(), xc.cols());
+  MatrixXd Volume(xc.rows(), xc.cols());
 
-  /////////////////////////////////////////////////////////////
-  ////////////////////// INITIALIZE ///////////////////////////
-  /////////////////////////////////////////////////////////////
- 
-  // CONSTRUCT VARS
+  ////////// matrix arrays
   // direction independent
   MatrixXd* V=new MatrixXd[NEQ]; // primitive variables
   MatrixXd* U=new MatrixXd[NEQ]; // conservative variables
   MatrixXd* S=new MatrixXd[NEQ]; // source term
-  MatrixXd* Res=new MatrixXd[NEQ]; //residual term only on domain of interest
+  MatrixXd* Res=new MatrixXd[NEQ]; //residual term only domain of interest
+  MatrixXd* U_RK=new MatrixXd[NEQ]; //time step for local or global 
+  MatrixXd* Error=new MatrixXd[NEQ]; //calcs error over the domain all eqs
+
   MatrixXd* Psi_Pos=new MatrixXd[NEQ]; // Psi_pos for finding Left and Right state
   MatrixXd* Psi_Neg=new MatrixXd[NEQ]; // Psi_neg for finding left and right state
+
   // direction dependent
   MatrixXd* F=new MatrixXd[NEQ]; // F flux 
   MatrixXd* G=new MatrixXd[NEQ]; // G flux 
@@ -77,9 +93,11 @@ int main( int argc, char *argv[] )
     // Interior plus ghost cellvals resize
     U[eq].resize(nrows,ncols);
     V[eq].resize(nrows,ncols);
+    U_RK[eq].resize(nrows,ncols); //Runge kutta intermediate holder
     // Interior cellvals only resize
     Res[eq].resize(xc.rows(),xc.cols()); // add res only to interior ****
     S[eq].resize(xc.rows(),xc.cols()); // interior only
+    Error[eq].resize(xc.rows(),xc.cols()); //error
     // Interior plus ghost facevals resize
     Psi_Neg[eq].resize(nrows+1,ncols+1); //Also can have negative values
     Psi_Pos[eq].resize(nrows+1,ncols+1); //Every interface can have a psi value*****
@@ -95,7 +113,24 @@ int main( int argc, char *argv[] )
     V_B[eq].resize(xn.rows(),xc.cols()); // all faces in y dir
   }
 
-  cout << " Initialized " << endl;
+  /////////////////////////////////////////////////////////////
+  ////////////////////// INITIALIZE ///////////////////////////
+  /////////////////////////////////////////////////////////////
+
+  //______ SET GEOMETRY ______//
+
+  computeArea(Ai, Aj, xn, yn);
+  computeNormalVectors(n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat,
+      xn, yn, Ai, Aj);
+  computeVolume(Volume, xn, yn);
+
+
+  //______SET PRIMITIVE VARIABLES______//
+  initialize(V, xc_g, yc_g, C);
+  computeTemperature(T, V);
+  outputArray("rho", V[rhoid], 0); // write to the debug file
+
+  //cout << " Initialized " << endl;
 
   //cout << x << endl;// Identify that all simulations have finished
   return 0;
