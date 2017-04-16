@@ -2,30 +2,480 @@
  * Computational Fluid Dynamics
  * Written ByRobert Masti
  * 1/27/2017
- * This file contains all function declarations that will be called in hw4_m.cpp which is the 
+ * This file contains all function declarations that will be called in fp_m.cpp which is the 
  * main cpp file. This is the function file, which has its function prototypes stored in the 
  * header file.
  */
-#include "fp.hpp" //structure templates and func prototypes
+#include "fp.hpp" //structure templates and func prototypes and libs
 
 
+void computeUpwindVBT(
+    // This function will compute the top and bot state through 
+    // similary method as VLR 
+    MatrixXd* V_B,         // output - Bottom state prim var   
+    MatrixXd* V_T,         // output - Top state prim var
+    MatrixXd* V,           // input - prim var
+    constants C            // input - constants
+    )
+{
+  int ni_g = V[rhoid].cols();
+  int nj_g = V[rhoid].rows(); 
+  int ni = ni_g - 2*C.num_ghost;
+  int nj = nj_g - 2*C.num_ghost;
+
+  // create the psi pos and neg
+  MatrixXd* Psi_Pos = new MatrixXd[NEQ];
+  MatrixXd* Psi_Neg = new MatrixXd[NEQ];
+  for (int eq = 0; eq < NEQ; eq++)
+  {
+    Psi_Pos[eq].resize(nj_g+1,ni_g);// interfaces in j
+    Psi_Neg[eq].resize(nj_g+1,ni_g);
+  }
+
+  // Calculate Psi's  then update top and bottom
+
+  double delta = 1.0e-6;
+  for (int i = 0; i < ni_g; i++)
+  {
+    for (int j = C.num_ghost-2 ; j <= nj+C.num_ghost; j++)
+    { 
+      // Loop over all of the primvars
+      for (int eq = 0; eq < NEQ; eq++)
+      {
+        // NOW SWEEPING IN THE i direction
+        // Calculate the denom which is the same for pos and neg
+        double denom = V[eq](j+1,i) - V[eq](j,i);
+        // Ensure not division by 0
+        denom = SIGN( mymax(abs(denom), delta), denom);
+        // Calculate the slopes (r) for both pos and neg dir
+        double r_p = (V[eq](j+2,i) - V[eq](j+1, i))/denom;
+        double r_n = (V[eq](j,i) - V[eq](j-1, i))/denom;
+         // Apply Limiters
+        
+        if ( C.f_limiter == 0 )  //no limiters
+        {
+          Psi_Pos[eq](j+1,i) = 1.0;
+          Psi_Neg[eq](j+1,i) = 1.0;
+        }
+
+        if ( C.f_limiter == 1 )  //Van leer
+        {
+          Psi_Pos[eq](j+1,i) = (r_p + abs(r_p)) / (1 + abs(r_p));
+          Psi_Neg[eq](j+1,i) = (r_n + abs(r_n)) / (1 + abs(r_n));
+        }
+        if ( C.f_limiter == 2 ) //Van Albada
+        {
+          // if negative reduce to first order
+          if( r_p < 0)
+            Psi_Pos[eq](j+1,i) = 0.0;
+          else
+            Psi_Pos[eq](j+1,i) = (r_p + r_p*r_p) / (1 + r_p*r_p);
+          if( r_n < 0)
+            Psi_Neg[eq](j+1,i) = 0.0;
+          else
+            Psi_Neg[eq](j+1,i) = (r_n + r_n*r_n) / (1 + r_n*r_n);
+        }
+        if ( C.f_limiter == 3 ) //Ospre
+        {
+          Psi_Pos[eq](j+1,i) = 1.5*(r_p*r_p + r_p) / (1 + r_p + r_p*r_p);
+          Psi_Neg[eq](j+1,i) = 1.5*(r_n*r_n + r_n) / (1 + r_n + r_n*r_n);
+        }
+        if ( C.f_limiter == 4 ) // monotized central least diffusive
+        {
+          Psi_Pos[eq](j+1,i) = mymax(0,mymin(2.0*r_p,mymin(0.5*(1+r_p),2)));
+          Psi_Neg[eq](j+1,i) = mymax(0,mymin(2.0*r_n,mymin(0.5*(1+r_n),2)));
+        }
+        if ( C.f_limiter == 5 ) // minmod f_limiter
+        {
+          Psi_Pos[eq](j+1,i) = mymax(0,mymin(1.0,r_p));
+          Psi_Neg[eq](j+1,i) = mymax(0,mymin(1.0,r_n));
+        }
+        if ( C.f_limiter == 6 ) // Superbee
+        {
+          Psi_Pos[eq](j+1,i) = mymax(0,mymax(mymin(2.0*r_p,1.0),mymin(r_p,2.0)));
+          Psi_Neg[eq](j+1,i) = mymax(0,mymax(mymin(2.0*r_n,1.0),mymin(r_n,2.0)));
+        }
+        
+      }
+    }
+  }
+
+  for (int i = 0; i < V_T[rhoid].cols(); i++)
+  {
+    for (int j = 0; j < V_T[rhoid].rows(); j++)
+    {
+      int j_int = C.num_ghost + j;
+      int j_cells = (C.num_ghost - 1) + j;
+      int i_cells = C.num_ghost + i;
+      for (int eq = 0 ; eq < NEQ; eq++)
+      {
+        // Note i_cells + 1 is the index for the i+1/2 value of psi
+        // Left state at the interface
+        V_B[eq](j,i) = V[eq](j_cells,i_cells) + 
+          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Pos[eq](j_int-1,i_cells)*
+              (V[eq](j_cells,i_cells)-V[eq](j_cells-1,i_cells)) + 
+              (1.0+C.f_kap)*Psi_Neg[eq](j_int,i_cells)*
+              (V[eq](j_cells+1,i_cells)-V[eq](j_cells,i_cells)));
+        // Right state at the interface
+        V_T[eq](j,i) = V[eq](j_cells+1,i_cells) - 
+          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Neg[eq](j_int+1,i_cells)*
+              (V[eq](j_cells+2,i_cells)-V[eq](j_cells+1,i_cells)) 
+              + (1.0+C.f_kap)*Psi_Pos[eq](j_int,i_cells)*
+              (V[eq](j_cells+1,i_cells)-V[eq](j_cells,i_cells)));
+      }  
+    }
+  }
+}
+
+void computeUpwindVLR(
+    // Apply upwinding scheme in the i direction to find the left and
+    // right states, note it does not use freezing
+    MatrixXd* V_L,         // output - Left state prim var     
+    MatrixXd* V_R,         // output - right state prim var
+    MatrixXd* V,           // input - prim var
+    constants C            // input - constants for limiter
+    )
+{
+  int ni_g = V[rhoid].cols();
+  int nj_g = V[rhoid].rows(); 
+  int ni = ni_g - 2*C.num_ghost;
+  int nj = nj_g - 2*C.num_ghost;
+
+  // create the psi pos and neg
+  MatrixXd* Psi_Pos = new MatrixXd[NEQ];
+  MatrixXd* Psi_Neg = new MatrixXd[NEQ];
+  for (int eq = 0; eq < NEQ; eq++)
+  {
+    Psi_Pos[eq].resize(nj_g,ni_g+1);
+    Psi_Neg[eq].resize(nj_g,ni_g+1);
+  }
+
+
+  // Calculate the Psi_Pos and Psi_Neg then update
+  double delta = 1.0e-6; // avoid div by zero
+  for (int j = 0; j < nj_g; j++)
+  {
+    for (int i = C.num_ghost-2 ; i <= ni+C.num_ghost; i++)
+    {
+      //cout << i << endl;
+      // Loop over all of the primvars
+      for (int eq = 0; eq < NEQ; eq++)
+      {
+        // Calculate the denom which is the same for pos and neg
+        double denom = V[eq](j,i+1) - V[eq](j,i);
+        // Ensure not division by 0
+        denom = SIGN( mymax(abs(denom), delta), denom);
+        // Calculate the slopes (r) for both pos and neg dir
+        double r_p = (V[eq](j,i+2) - V[eq](j, i+1))/denom;
+        double r_n = (V[eq](j,i) - V[eq](j, i-1))/denom;
+        // Apply Limiters
+        if ( C.f_limiter == 0 )  //no limiters
+        {
+          Psi_Pos[eq](j,i+1) = 1.0;
+          Psi_Neg[eq](j,i+1) = 1.0;
+        }
+
+        if ( C.f_limiter == 1 )  //Van leer
+        {
+          Psi_Pos[eq](j,i+1) = (r_p + abs(r_p)) / (1 + abs(r_p));
+          Psi_Neg[eq](j,i+1) = (r_n + abs(r_n)) / (1 + abs(r_n));
+        }
+        if ( C.f_limiter == 2 ) //Van Albada
+        {
+          // if negative reduce to first order
+          if( r_p < 0)
+            Psi_Pos[eq](j,i+1) = 0.0;
+          else
+            Psi_Pos[eq](j,i+1) = (r_p + r_p*r_p) / (1 + r_p*r_p);
+          if( r_n < 0)
+            Psi_Neg[eq](j,i+1) = 0.0;
+          else
+            Psi_Neg[eq](j,i+1) = (r_n + r_n*r_n) / (1 + r_n*r_n);
+        }
+        if ( C.f_limiter == 3 ) //Ospre
+        {
+          Psi_Pos[eq](j,i+1) = 1.5*(r_p*r_p + r_p) / (1 + r_p + r_p*r_p);
+          Psi_Neg[eq](j,i+1) = 1.5*(r_n*r_n + r_n) / (1 + r_n + r_n*r_n);
+        }
+        if ( C.f_limiter == 4 ) // monotized central least diffusive
+        {
+          Psi_Pos[eq](j,i+1) = mymax(0,mymin(2.0*r_p,mymin(0.5*(1+r_p),2)));
+          Psi_Neg[eq](j,i+1) = mymax(0,mymin(2.0*r_n,mymin(0.5*(1+r_n),2)));
+        }
+        if ( C.f_limiter == 5 ) // minmod f_limiter
+        {
+          Psi_Pos[eq](j,i+1) = mymax(0,mymin(1.0,r_p));
+          Psi_Neg[eq](j,i+1) = mymax(0,mymin(1.0,r_n));
+        }
+        if ( C.f_limiter == 6 ) // Superbee
+        {
+          Psi_Pos[eq](j,i+1) = mymax(0,mymax(mymin(2.0*r_p,1.0),mymin(r_p,2.0)));
+          Psi_Neg[eq](j,i+1) = mymax(0,mymax(mymin(2.0*r_n,1.0),mymin(r_n,2.0)));
+        }
+      }
+    }
+  }
+  outputArray("pos_psi1", Psi_Pos[rhoid], 0);
+
+  outputArray("pos_psi2", Psi_Pos[uid], 0);
+
+  outputArray("pos_psi3", Psi_Pos[vid], 0);
+
+  outputArray("pos_psi4", Psi_Pos[pid], 0);
+
+  // Fill in the Left and right state values
+  for (int i = 0; i < V_L[rhoid].cols(); i++)
+  {
+    for (int j = 0; j < V_L[rhoid].rows(); j++)
+    {
+      int i_int = C.num_ghost + i; // loop over i interfaces 
+      int i_cells = (C.num_ghost - 1) + i; // loop over j interfaces
+      int j_cells = C.num_ghost+j;
+      for (int eq = 0 ; eq < NEQ; eq++)
+      {
+        // Note i_cells + 1 is the index for the i+1/2 value of psi
+        // Left state at the interface
+        V_L[eq](j,i) = V[eq](j_cells,i_cells) + 
+          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Pos[eq](j_cells,i_int-1)*
+              (V[eq](j_cells,i_cells)-V[eq](j_cells,i_cells-1)) + 
+              (1.0+C.f_kap)*Psi_Neg[eq](j_cells,i_int)*
+              (V[eq](j_cells,i_cells+1)-V[eq](j_cells,i_cells)));
+        // Right state at the interface
+        V_R[eq](j,i) = V[eq](j_cells,i_cells+1) - 
+          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Neg[eq](j_cells,i_int+1)*
+              (V[eq](j_cells,i_cells+2)-V[eq](j_cells,i_cells+1)) 
+              + (1.0+C.f_kap)*Psi_Pos[eq](j_cells,i_int)*
+              (V[eq](j_cells,i_cells+1)-V[eq](j_cells,i_cells)));
+      }  
+    }
+  }
+}
+
+
+void MUSCL(
+    // This function will fill in the values of the LRBT states used in 
+    // the flux calculation it will require 
+    // it does not use limiter freezing
+    MatrixXd* V_L,         // output - Left state prim var     
+    MatrixXd* V_R,         // output - right state prim var
+    MatrixXd* V_B,         // output - bottom state prim var
+    MatrixXd* V_T,         // output - top state prim var
+    MatrixXd* V,           // input - prim var at cells w/g
+    constants C            // input - constants for flags
+    )
+{
+  computeUpwindVLR(V_L, V_R, V, C);
+  computeUpwindVBT(V_B, V_T, V, C);
+}
+
+void setBCMMS(
+    // This function just applying the boundary condition of the MMS case
+    // It basically copies the solution to the ghost cells
+    MatrixXd* V,           // output - Solution at the Boundaries MMS   
+    MatrixXd* V_MMS,       // input - Solution at bndries analytically
+    constants C            // input - constants for?
+    )
+{
+  int ni_g = V[rhoid].cols(); 
+  int nj_g = V[rhoid].rows(); // cell number w/ ghost
+  int ni = ni_g - 2*C.num_ghost;
+  int nj = nj_g - 2*C.num_ghost;// cell number w/o ghost
+
+  int bot = C.num_ghost - 1; // 1st ghost cell based off 
+  int top = C.num_ghost + nj; // top index start
+  int left = C.num_ghost -1; // same as bot
+  int right = C.num_ghost + ni; // 1st ghost on right
+
+  // j line push in i dir 
+  for (int i = C.num_ghost; i < ni+C.num_ghost; i++)
+  {
+    for (int j = 0; j < C.num_ghost; j++)
+    {
+      for (int eq = 0; eq < NEQ; eq++)
+      {
+        // bottom index - j is the filling of ghost
+        V[eq](bot-j,i) = V_MMS[eq](bot-j,i);
+        // top index top + j is filling ghost
+        V[eq](top+j,i) = V_MMS[eq](top+j, i);
+      }
+    }
+  }
+  // i line push in j dir 
+  for (int i = 0; i < C.num_ghost; i ++)
+  {
+    for (int j = C.num_ghost; j < C.num_ghost+nj; j++)
+    {
+      for (int eq = 0; eq < NEQ; eq++)
+      {
+
+        // left index - i is the filling of ghost
+        V[eq](j,left-i) = V_MMS[eq](j,left-i);
+        // right index + i is the filling of ghost
+        V[eq](j,right+i) = V_MMS[eq](j,right+i);
+      }
+    }
+  }
+}
+
+void solveSolutionMMS(
+    // This function evaluates the KNOWN solution which can be used 
+    // in determining error
+    MatrixXd* V_MMS,       // output - MMS solution at all cells  
+    MatrixXd& xc_g,        // input - xcoord cells w/ ghost
+    MatrixXd& yc_g,        // input - ycoord cells w/ghost
+    constants C            // input - constants for?
+    )
+{
+  // Setup vars associated with Appendix A from the Paper
+  double rho0, rhox, rhoy;
+  double uvel0, uvelx, uvely;
+  double vvel0, vvelx, vvely;
+  double wvel0, wvelx, wvely;
+  double press0, pressx, pressy;
+  double Pi = PI;// Used for mathematica notebook notation
+  double gamma = GAMMA;// used for nb notation
+
+  double x, y; // x and y for the sin and cos funcs
+  double L = 1.0; // length specified from paper for m.nb
+
+  int ni = xc_g.cols(); // number of cells i dir
+  int nj = xc_g.rows(); // number of cells j dir
+
+  // Check for dimension mismatch
+  if (V_MMS[rhoid].rows() != nj || V_MMS[rhoid].cols() != ni)
+  {
+    cerr << "ERROR: Dimension Mismatch in MMS Source Setup?!?!" << endl;
+    exit(1);
+  }
+  if (C.f_supersonic == 0) // subsonic table A.2
+  {
+    rho0=1.0; rhox=0.15; rhoy=-0.1; // same in both
+    uvel0=70.0; uvelx=5.0; uvely=-7.0;
+    vvel0=90.0; vvelx=-15.0; vvely=8.5;
+    wvel0=0.0; wvelx=0.0; wvely=0.0;
+    press0=1.0e5; pressx=0.2e5; pressy=0.5e5; // same in both
+  }
+  else if (C.f_supersonic == 1) // supersonic table A.1
+  {
+    rho0=1.0; rhox=0.15; rhoy=-0.1;
+    uvel0=800.0; uvelx=50.0; uvely=-30.0;
+    vvel0=800.0; vvelx=-75.0; vvely=40.0;
+    wvel0=0.0; wvelx=0.0; wvely=0.0;
+    press0=1.0e5; pressx=0.2e5; pressy=0.5e5;
+  }
+  else
+  {
+    cerr << "ERROR: C.f_supersonic Incorrect Value MMS Source Setup?!?!" << endl;
+    exit(1);
+  }
+  // loop over coords
+  for (int i = 0; i < ni; i++)
+  {
+    for (int j = 0; j < nj; j++)
+    {
+      // grab the coords for copying purposes from mathematica
+      x = xc_g(j,i); y = yc_g(j,i);
+
+      V_MMS[rhoid](j,i) = rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L);
+      V_MMS[uid](j,i) = uvel0 + uvely*cos((3.*Pi*y)/(5.*L)) + uvelx*sin((3.*Pi*x)/(2.*L));
+
+      V_MMS[vid](j,i) = vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2.*Pi*y)/(3.*L));
+      V_MMS[pid](j,i) = press0 + pressx*cos((2.*Pi*x)/L) + pressy*sin((Pi*y)/L);
+    }
+  }
+}
+
+void solveSourceMMS(
+    // This function will determine the source term that is found from 
+    // substituting the MMS solution into the PDE. 
+    MatrixXd* S,           // output - Source Term Values                  
+    MatrixXd& xc,          // input - x cell coords w/o ghost
+    MatrixXd& yc,          // input - y cell coords w/o ghost
+    constants C            // input - constants for flags
+    )
+{
+  // Setup vars associated with Appendix A from the Paper
+  double rho0, rhox, rhoy;
+  double uvel0, uvelx, uvely;
+  double vvel0, vvelx, vvely;
+  double wvel0, wvelx, wvely;
+  double press0, pressx, pressy;
+  double Pi = PI;// Used for mathematica notebook notation
+  double gamma = GAMMA;// used for nb notation
+
+  double x, y; // x and y for the sin and cos funcs
+  double L = 1.0; // length specified from paper for m.nb
+
+  int ni = xc.cols(); // number of cells i dir
+  int nj = xc.rows(); // number of cells j dir
+
+  // Check for dimension mismatch
+  if (S[rhoid].rows() != nj || S[rhoid].cols() != ni)
+  {
+    cerr << "ERROR: Dimension Mismatch in MMS Source Setup?!?!" << endl;
+    exit(1);
+  }
+  if (C.f_supersonic == 0) // subsonic table A.2
+  {
+    rho0=1.0; rhox=0.15; rhoy=-0.1; // same in both
+    uvel0=70.0; uvelx=5.0; uvely=-7.0;
+    vvel0=90.0; vvelx=-15.0; vvely=8.5;
+    wvel0=0.0; wvelx=0.0; wvely=0.0;
+    press0=1.0e5; pressx=0.2e5; pressy=0.5e5; // same in both
+  }
+  else if (C.f_supersonic == 1) // supersonic table A.1
+  {
+    rho0=1.0; rhox=0.15; rhoy=-0.1;
+    uvel0=800.0; uvelx=50.0; uvely=-30.0;
+    vvel0=800.0; vvelx=-75.0; vvely=40.0;
+    wvel0=0.0; wvelx=0.0; wvely=0.0;
+    press0=1.0e5; pressx=0.2e5; pressy=0.5e5;
+  }
+  else
+  {
+    cerr << "ERROR: C.f_supersonic Incorrect Value MMS Source Setup?!?!" << endl;
+    exit(1);
+  }
+
+  // APPLY MMS from the mathematica notebook. Note the same usage of variable names
+  for (int i = 0; i < ni; i++)
+  {
+    for (int j = 0; j < nj; j++)
+    {
+      // In the notebook it uses x and y so grab vals
+      x = xc(j,i); y = yc(j,i);
+
+      S[rhoid](j,i) = (3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L)))/(2.*L) + (2*Pi*vvely*cos((2*Pi*y)/(3.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L)))/(3.*L) + (Pi*rhox*cos((Pi*x)/L)*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/L - (Pi*rhoy*sin((Pi*y)/(2.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*
+                L)) + vvely*sin((2*Pi*y)/(3.*L))))/(2.*L);
+
+      S[rhouid](j,i) = (3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/L + (2*Pi*vvely*cos((2*Pi*y)/(3.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/(3.*L) + (Pi*rhox*cos((Pi*x)/L)*pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2))/L - (2*Pi*pressx*sin((2*Pi*x)/L))/L - (Pi*rhoy*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*sin((Pi*y)/(2.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/ (2.*L) - (3*Pi*uvely*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*sin((3*Pi*y)/(5.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/(5.*L);
+
+      S[rhovid](j,i) = (Pi*pressy*cos((Pi*y)/L))/L - (Pi*vvelx*sin((Pi*x)/(2.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/(2.*L) + (3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/(2.*L) + (4*Pi*vvely*cos((2*Pi*y)/(3.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/(3.*L) + (Pi*rhox*cos((Pi*x)/L)*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/L - (Pi*rhoy*sin((Pi*y)/(2.*L))*pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/(2.*L); 
+
+      S[rhoetid](j,i) = (uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*((-2*Pi*pressx*sin((2*Pi*x)/L))/L + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((-2*Pi*pressx*sin((2*Pi*x)/L))/((-1 + gamma)*L*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))) + ((3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/L - (Pi*vvelx*sin((Pi*x)/(2.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/L)/2. - (Pi*rhox*cos((Pi*x)/L)*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L)))/((-1 + gamma)*L*pow(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L),2))) + (Pi*rhox*cos((Pi*x)/L)*((pow(wvel0,2) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L)))))/L) + (3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L) + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((pow(wvel0,2) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))))))/(2.*L) + (2*Pi*vvely*cos((2*Pi*y)/(3.*L))*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L) + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((pow(wvel0,2) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))))))/(3.*L) + (vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)))*((Pi*pressy*cos((Pi*y)/L))/L - (Pi*rhoy*sin((Pi*y)/(2.*L))*((pow(wvel0,2) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L)))))/(2.*L) + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((Pi*pressy*cos((Pi*y)/L))/((-1 + gamma)*L*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))) + ((-6*Pi*uvely*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*sin((3*Pi*y)/(5.*L)))/(5.*L) + (4*Pi*vvely*cos((2*Pi*y)/(3.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/(3.*L))/2. + (Pi*rhoy*sin((Pi*y)/(2.*L))*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L)))/(2.*(-1 + gamma)*L*pow(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L),2)))); 
+    }
+  }
+  // FROM the paper the initial values
+}
 
 void outputArray(
     // This function will output any eigen matrix into a file
-    string FileName,                  //input - File
-    MatrixXd& out,                    //input - matrix
-    int n)                            //input - iteration
+    string FileName,       // input - File
+    MatrixXd& out,         //input - matrix
+    int n                  //input - iteration
+    )
 {
   ostringstream StrConvert;
   StrConvert << n; // import n as an ostringstream
   string num_iter = StrConvert.str();// convert to string
   string Address = "./debug/";// add together
   string Suffix = ".txt";
-  Address = Address + FileName + num_iter + Suffix; // can combine string
+  string Sub = "_";
+  Address = Address + FileName + Sub + num_iter + Suffix; // can combine string
   ofstream outfile; // output
   outfile.open(Address.c_str()); // access string component
-  //outfile << setprecision(14) << out.transpose() << endl; // output trans
-  outfile << setprecision(14) << out << endl; // output trans
+  outfile << setprecision(14) << out.transpose() << endl; // output trans
+  //outfile << setprecision(14) << out << endl; // output trans
 }
 
 
@@ -55,7 +505,7 @@ void initialize(
   // check for the same sizes
   if (V[rhoid].cols() != ni || V[rhoid].rows() != nj)
   {
-    cerr << "ERROR: Size Mismatch in Initialization?!?!" << endl;
+    cerr << "ERROR: Dimension Mismatch in Initialization?!?!" << endl;
     exit(1);
   }
   // create important constants specified from papers
@@ -178,19 +628,19 @@ void extrapCopyCoords(
     }
   }
   //cout << xc_g << endl;
-  //zero out the corners for sake of clarity.
+  //set to 1 out the corners for sake of clarity.
   for (int i = 0; i < C.num_ghost; i++)
   {
     for (int j = 0; j < C.num_ghost; j++)
     {
       // bot left
-      xc_g(j,i) = 0.0; yc_g(j,i) = 0.0;
+      xc_g(j,i) = 1.0; yc_g(j,i) = 1.0;
       // bot right
-      xc_g(j,right+i) = 0.0; yc_g(j,right+i) = 0.0;
+      xc_g(j,right+i) = 1.0; yc_g(j,right+i) = 1.0;
       // top right
-      xc_g(top+j,right+i) = 0.0; yc_g(top+j,right+i) = 0.0;
+      xc_g(top+j,right+i) = 1.0; yc_g(top+j,right+i) = 1.0;
       // top left
-      xc_g(top+j,i) = 0.0; yc_g(top+j,i) = 0.0;
+      xc_g(top+j,i) = 1.0; yc_g(top+j,i) = 1.0;
     }
   }
   //cout << xc_g << endl;
@@ -528,7 +978,14 @@ constants loadInputFile(
   C.localdt = searchInputFile(FileName, "localdt");
   C.tol = searchInputFile(FileName, "tol");
   C.cfl = searchInputFile(FileName, "cfl");
+  C.f_kap = searchInputFile(FileName, "f_kap");
   return C;
 }
 
-
+double SIGN(double a, double b)
+{
+  if (b<0)
+    return -a;
+  else
+    return a;
+}

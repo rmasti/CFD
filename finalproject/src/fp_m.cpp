@@ -67,15 +67,12 @@ int main( int argc, char *argv[] )
   ////////// matrix arrays
   // direction independent
   MatrixXd* V=new MatrixXd[NEQ]; // primitive variables
+  MatrixXd* V_MMS=new MatrixXd[NEQ]; // MMS solution
   MatrixXd* U=new MatrixXd[NEQ]; // conservative variables
   MatrixXd* S=new MatrixXd[NEQ]; // source term
   MatrixXd* Res=new MatrixXd[NEQ]; //residual term only domain of interest
   MatrixXd* U_RK=new MatrixXd[NEQ]; //time step for local or global 
   MatrixXd* Error=new MatrixXd[NEQ]; //calcs error over the domain all eqs
-
-  MatrixXd* Psi_Pos=new MatrixXd[NEQ]; // Psi_pos for finding Left and Right state
-  MatrixXd* Psi_Neg=new MatrixXd[NEQ]; // Psi_neg for finding left and right state
-
   // direction dependent
   MatrixXd* F=new MatrixXd[NEQ]; // F flux 
   MatrixXd* G=new MatrixXd[NEQ]; // G flux 
@@ -91,17 +88,14 @@ int main( int argc, char *argv[] )
   {
     ///// Direction Indepndent /////
     // Interior plus ghost cellvals resize
-    U[eq].resize(nrows,ncols);
-    V[eq].resize(nrows,ncols);
+    U[eq].resize(nrows,ncols); // numerical solution
+    V[eq].resize(nrows,ncols); // Numerical solution
+    V_MMS[eq].resize(nrows,ncols); // MMS solution
     U_RK[eq].resize(nrows,ncols); //Runge kutta intermediate holder
     // Interior cellvals only resize
     Res[eq].resize(xc.rows(),xc.cols()); // add res only to interior ****
     S[eq].resize(xc.rows(),xc.cols()); // interior only
     Error[eq].resize(xc.rows(),xc.cols()); //error
-    // Interior plus ghost facevals resize
-    Psi_Neg[eq].resize(nrows+1,ncols+1); //Also can have negative values
-    Psi_Pos[eq].resize(nrows+1,ncols+1); //Every interface can have a psi value*****
-
     ///// Direction Depndent /////
     // Interior facevals xdir only resize
     F[eq].resize(xc.rows(),xn.cols()); // only need flux on the interior
@@ -126,11 +120,74 @@ int main( int argc, char *argv[] )
 
 
   //______SET PRIMITIVE VARIABLES______//
+  cout << "Initializing... " << endl;
   initialize(V, xc_g, yc_g, C);
-  computeTemperature(T, V);
-  outputArray("rho", V[rhoid], 0); // write to the debug file
 
-  //cout << " Initialized " << endl;
+  computeTemperature(T, V);
+
+  //______SET BOUNDARY CONDITIONS/SOURCES______//
+  cout << "Applying BC's... " << endl;
+  if (C.f_case == 1) // MMS Curvilinear mesh
+  {
+    solveSourceMMS(S,xc,yc, C);
+    solveSolutionMMS(V_MMS, xc_g, yc_g, C); // solution at cell w/ g
+    setBCMMS(V, V_MMS, C);
+  }
+  else // case 2 and 3 BC enforce and Source Determ
+  {
+    // zero the source term
+    for (int eq = 0; eq < NEQ; eq++)
+      S[eq] = MatrixXd::Constant(xc.rows(), xc.cols(), 0.0);
+    // set BC STILL TO DO
+  }
+  /////////////////////////////////////////////////////////////
+  ////////////////////// EXTRAPOLATE //////////////////////////
+  /////////////////////////////////////////////////////////////
+  cout << "Performing MUSCL Extrap... " << endl;
+  MUSCL(V_L,V_R,V_B,V_T,V,C);
+
+  /////////////////////////////////////////////////////////////
+  /////////////////// OUTPUT ARRAYS ///////////////////////////
+  /////////////////////////////////////////////////////////////
+  outputArray("rho", V[rhoid], 0);
+  outputArray("u", V[uid], 0);
+  outputArray("v", V[vid], 0);
+  outputArray("p", V[pid], 0);
+  
+  outputArray("rho_L", V_L[rhoid], 0);
+  outputArray("u_L", V_L[uid], 0);
+  outputArray("v_L", V_L[vid], 0);
+  outputArray("p_L", V_L[pid], 0);
+ 
+  outputArray("rho_R", V_R[rhoid], 0);
+  outputArray("u_R", V_R[uid], 0);
+  outputArray("v_R", V_R[vid], 0);
+  outputArray("p_R", V_R[pid], 0);
+
+  outputArray("rho_B", V_B[rhoid], 0);
+  outputArray("u_B", V_B[uid], 0);
+  outputArray("v_B", V_B[vid], 0);
+  outputArray("p_B", V_B[pid], 0);
+ 
+  outputArray("rho_T", V_T[rhoid], 0);
+  outputArray("u_T", V_T[uid], 0);
+  outputArray("v_T", V_T[vid], 0);
+  outputArray("p_T", V_T[pid], 0);
+
+  outputArray("rhomms", V_MMS[rhoid], 0);
+  outputArray("umms", V_MMS[uid], 0);
+  outputArray("vmms", V_MMS[vid], 0);
+  outputArray("pmms", V_MMS[pid], 0);
+ 
+  outputArray("S1", S[rhoid], 0);
+  outputArray("S2", S[rhouid], 0);
+  outputArray("S3", S[rhovid], 0);
+  outputArray("S4", S[rhoetid], 0);
+
+
+  /////////////////////////////////////////////////////////////
+  ////////////////////// COMPUTE FLUX /////////////////////////
+  /////////////////////////////////////////////////////////////
 
   //cout << x << endl;// Identify that all simulations have finished
   return 0;

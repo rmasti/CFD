@@ -65,6 +65,7 @@ struct constants
   int f_upwind;            // 1 for Van Leer FVS, and 2 for Roe FDS
   int f_limiter;           // 0 for limiter off, 1 for limiter on, 2 ....
   int f_eps;               // Epsilon for upwind 0 for 1st order, 1 for 2nd order
+  double f_kap;
   int rk_order;            // Runge Kutta order (2nd or 4th order)
   int nmax;                // Maximum iteration number 1e6 typical
   int wint;                // Write Interval
@@ -102,5 +103,18 @@ void initialize(MatrixXd* V, MatrixXd& xc_g, MatrixXd& yc_g, constants C);
 void computeTemperature(MatrixXd& T, MatrixXd* V);
 
 void outputArray(string FileName, MatrixXd& out, int n);
+
+void solveSourceMMS(MatrixXd* S, MatrixXd& xc, MatrixXd& yc, constants C);
+
+void solveSolutionMMS(MatrixXd* V_MMS, MatrixXd& xc_g, MatrixXd& yc_g, constants C);
+
+void setBCMMS(MatrixXd* V, MatrixXd* V_MMS, constants C);
+
+void MUSCL(MatrixXd* V_L, MatrixXd* V_R, MatrixXd* V_B, MatrixXd* V_T, MatrixXd* V, constants C);
+
+void computeUpwindVLR(MatrixXd* V_L, MatrixXd* V_R, MatrixXd* V, constants C);
+
+double SIGN(double a, double b);
+
 
 #endif
