@@ -9,6 +9,49 @@
 #include "fp.hpp" //structure templates and func prototypes and libs
 
 
+void applyLimiter(
+    // This function avoids repeated code chucks it takes in the iteration number and output 
+    // Psi's
+    double& psi_p,         // output - modify psi_p double value
+    double& psi_n,         // output - modify psi_n double value
+    double r_p,            // input - r_p slope 
+    double r_n,            // input - r_n slope
+    constants C            // input - constants for limiter flag
+    ) 
+{
+  switch (C.f_limiter)
+  {
+    case 0:  // no limiter
+      psi_p = 1.0;
+      psi_n = 1.0;
+      break;
+    case 1: // van leer
+      psi_p = (r_p + abs(r_p)) / (1 + abs(r_p));
+      psi_n = (r_n + abs(r_n)) / (1 + abs(r_n));
+      break;
+    case 2: // van albaada
+      psi_p = (r_p + r_p*r_p) / (1 + r_p*r_p);
+      psi_n = (r_n + r_n*r_n) / (1 + r_n*r_n);
+      break;
+    case 3: // Ospre
+      psi_p = 1.5*(r_p*r_p + r_p) / (1 + r_p + r_p*r_p);
+      psi_n = 1.5*(r_n*r_n + r_n) / (1 + r_n + r_n*r_n);
+      break;
+    case 4: // monotized central least diffusive
+      psi_p = mymax(0,mymin(2.0*r_p,mymin(0.5*(1+r_p),2)));
+      psi_n = mymax(0,mymin(2.0*r_n,mymin(0.5*(1+r_n),2)));
+      break;
+    case 5: // MINMOD
+      psi_p = mymax(0,mymin(1.0,r_p));
+      psi_n = mymax(0,mymin(1.0,r_n));
+      break;
+    case 6: // superbee
+      psi_p = mymax(0,mymax(mymin(2.0*r_p,1.0),mymin(r_p,2.0)));
+      psi_n = mymax(0,mymax(mymin(2.0*r_n,1.0),mymin(r_n,2.0)));
+      break;
+  }
+}
+
 void computeUpwindVBT(
     // This function will compute the top and bot state through 
     // similary method as VLR 
@@ -50,52 +93,11 @@ void computeUpwindVBT(
         // Calculate the slopes (r) for both pos and neg dir
         double r_p = (V[eq](j+2,i) - V[eq](j+1, i))/denom;
         double r_n = (V[eq](j,i) - V[eq](j-1, i))/denom;
-         // Apply Limiters
-        
-        if ( C.f_limiter == 0 )  //no limiters
-        {
-          Psi_Pos[eq](j+1,i) = 1.0;
-          Psi_Neg[eq](j+1,i) = 1.0;
-        }
-
-        if ( C.f_limiter == 1 )  //Van leer
-        {
-          Psi_Pos[eq](j+1,i) = (r_p + abs(r_p)) / (1 + abs(r_p));
-          Psi_Neg[eq](j+1,i) = (r_n + abs(r_n)) / (1 + abs(r_n));
-        }
-        if ( C.f_limiter == 2 ) //Van Albada
-        {
-          // if negative reduce to first order
-          if( r_p < 0)
-            Psi_Pos[eq](j+1,i) = 0.0;
-          else
-            Psi_Pos[eq](j+1,i) = (r_p + r_p*r_p) / (1 + r_p*r_p);
-          if( r_n < 0)
-            Psi_Neg[eq](j+1,i) = 0.0;
-          else
-            Psi_Neg[eq](j+1,i) = (r_n + r_n*r_n) / (1 + r_n*r_n);
-        }
-        if ( C.f_limiter == 3 ) //Ospre
-        {
-          Psi_Pos[eq](j+1,i) = 1.5*(r_p*r_p + r_p) / (1 + r_p + r_p*r_p);
-          Psi_Neg[eq](j+1,i) = 1.5*(r_n*r_n + r_n) / (1 + r_n + r_n*r_n);
-        }
-        if ( C.f_limiter == 4 ) // monotized central least diffusive
-        {
-          Psi_Pos[eq](j+1,i) = mymax(0,mymin(2.0*r_p,mymin(0.5*(1+r_p),2)));
-          Psi_Neg[eq](j+1,i) = mymax(0,mymin(2.0*r_n,mymin(0.5*(1+r_n),2)));
-        }
-        if ( C.f_limiter == 5 ) // minmod f_limiter
-        {
-          Psi_Pos[eq](j+1,i) = mymax(0,mymin(1.0,r_p));
-          Psi_Neg[eq](j+1,i) = mymax(0,mymin(1.0,r_n));
-        }
-        if ( C.f_limiter == 6 ) // Superbee
-        {
-          Psi_Pos[eq](j+1,i) = mymax(0,mymax(mymin(2.0*r_p,1.0),mymin(r_p,2.0)));
-          Psi_Neg[eq](j+1,i) = mymax(0,mymax(mymin(2.0*r_n,1.0),mymin(r_n,2.0)));
-        }
-        
+        // Apply Limiters
+        double psi_p, psi_n;
+        applyLimiter(psi_p, psi_n, r_p, r_n, C);
+        Psi_Pos[eq](j+1,i) = psi_p;
+        Psi_Neg[eq](j+1,i) = psi_n;
       }
     }
   }
@@ -169,59 +171,13 @@ void computeUpwindVLR(
         double r_p = (V[eq](j,i+2) - V[eq](j, i+1))/denom;
         double r_n = (V[eq](j,i) - V[eq](j, i-1))/denom;
         // Apply Limiters
-        if ( C.f_limiter == 0 )  //no limiters
-        {
-          Psi_Pos[eq](j,i+1) = 1.0;
-          Psi_Neg[eq](j,i+1) = 1.0;
-        }
-
-        if ( C.f_limiter == 1 )  //Van leer
-        {
-          Psi_Pos[eq](j,i+1) = (r_p + abs(r_p)) / (1 + abs(r_p));
-          Psi_Neg[eq](j,i+1) = (r_n + abs(r_n)) / (1 + abs(r_n));
-        }
-        if ( C.f_limiter == 2 ) //Van Albada
-        {
-          // if negative reduce to first order
-          if( r_p < 0)
-            Psi_Pos[eq](j,i+1) = 0.0;
-          else
-            Psi_Pos[eq](j,i+1) = (r_p + r_p*r_p) / (1 + r_p*r_p);
-          if( r_n < 0)
-            Psi_Neg[eq](j,i+1) = 0.0;
-          else
-            Psi_Neg[eq](j,i+1) = (r_n + r_n*r_n) / (1 + r_n*r_n);
-        }
-        if ( C.f_limiter == 3 ) //Ospre
-        {
-          Psi_Pos[eq](j,i+1) = 1.5*(r_p*r_p + r_p) / (1 + r_p + r_p*r_p);
-          Psi_Neg[eq](j,i+1) = 1.5*(r_n*r_n + r_n) / (1 + r_n + r_n*r_n);
-        }
-        if ( C.f_limiter == 4 ) // monotized central least diffusive
-        {
-          Psi_Pos[eq](j,i+1) = mymax(0,mymin(2.0*r_p,mymin(0.5*(1+r_p),2)));
-          Psi_Neg[eq](j,i+1) = mymax(0,mymin(2.0*r_n,mymin(0.5*(1+r_n),2)));
-        }
-        if ( C.f_limiter == 5 ) // minmod f_limiter
-        {
-          Psi_Pos[eq](j,i+1) = mymax(0,mymin(1.0,r_p));
-          Psi_Neg[eq](j,i+1) = mymax(0,mymin(1.0,r_n));
-        }
-        if ( C.f_limiter == 6 ) // Superbee
-        {
-          Psi_Pos[eq](j,i+1) = mymax(0,mymax(mymin(2.0*r_p,1.0),mymin(r_p,2.0)));
-          Psi_Neg[eq](j,i+1) = mymax(0,mymax(mymin(2.0*r_n,1.0),mymin(r_n,2.0)));
-        }
+        double psi_p, psi_n;
+        applyLimiter(psi_p, psi_n, r_p, r_n, C);
+        Psi_Pos[eq](j,i+1) = psi_p;
+        Psi_Neg[eq](j,i+1) = psi_n;
       }
     }
   }
-  outputArray("pos_psi1", Psi_Pos[rhoid], 0);
-
-  outputArray("pos_psi2", Psi_Pos[uid], 0);
-
-  outputArray("pos_psi3", Psi_Pos[vid], 0);
-
-  outputArray("pos_psi4", Psi_Pos[pid], 0);
 
   // Fill in the Left and right state values
   for (int i = 0; i < V_L[rhoid].cols(); i++)

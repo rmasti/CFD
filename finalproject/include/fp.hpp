@@ -116,5 +116,8 @@ void computeUpwindVLR(MatrixXd* V_L, MatrixXd* V_R, MatrixXd* V, constants C);
 
 double SIGN(double a, double b);
 
+void applyLimiter(double& psi_p, double& psi_n, double r_p, double r_n, constants C);
+
+
 
 #endif
