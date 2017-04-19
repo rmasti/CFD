@@ -33,6 +33,7 @@ using namespace Eigen;
 //#define PI 3.14159265359
 #define PI 3.1415926
 #define NEQ 4
+#define DEBUG false
 
 // DEFINE ELEMENT IDENTIFIERS
 
@@ -124,5 +125,21 @@ void compute2DFlux(MatrixXd* F, MatrixXd* G, MatrixXd& n_i_xhat, MatrixXd& n_i_y
 void computeFluxRoe(MatrixXd* Flux, MatrixXd nxhat, MatrixXd nyhat, MatrixXd* V_Left, MatrixXd* V_Right, constants C);
 
 void computeFluxVL(MatrixXd* Flux, MatrixXd nxhat, MatrixXd nyhat, MatrixXd* V_Left, MatrixXd* V_Right, constants C);
+
+void primToCons(MatrixXd* U, MatrixXd* V, constants C);
+
+void computeRes(MatrixXd* Res, MatrixXd* F, MatrixXd* G, MatrixXd* S, MatrixXd& Ai, MatrixXd& Aj, MatrixXd& Volume, constants C);
+
+void computeMaxSpeed(MatrixXd& MaxSpeed, MatrixXd* V, constants C);
+
+void computeTimeStep(MatrixXd& dt, MatrixXd& Volume, MatrixXd& Ai, MatrixXd& Aj, MatrixXd& n_i_xhat, MatrixXd& n_i_yhat, MatrixXd& n_j_xhat, MatrixXd& n_j_yhat, MatrixXd& MaxSpeed, MatrixXd* V, constants C);
+
+VectorXd computeL2(MatrixXd* Res, constants C);
+
+void computeError(MatrixXd* Error, MatrixXd* V, MatrixXd* V_MMS, constants C);
+
+void rungeKutta(MatrixXd* U_RK, MatrixXd* U, MatrixXd* Res, MatrixXd& Volume, MatrixXd& dt, int k, constants C);
+
+void consToPrim(MatrixXd* V, MatrixXd* U, constants C);
 
 #endif

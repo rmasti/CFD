@@ -8,14 +8,256 @@
  */
 #include "fp.hpp" //structure templates and func prototypes and libs
 
+
+
+void consToPrim(
+    // This function converts conserved vars to prim vars
+    MatrixXd* V,           // output - Prim var   
+    MatrixXd* U,           // input - cons var
+    constants C            // input - constants
+    )
+{
+  V[rhoid] = U[rhoid];
+  V[uid] = U[rhouid].cwiseProduct(U[rhoid].cwiseInverse()); // "rhou/rho"
+  V[vid] = U[rhovid].cwiseProduct(U[rhoid].cwiseInverse()); // "rhov/rho"
+  V[pid] = (GAMMA - 1.0)*(U[rhoetid] -
+      0.5*V[rhoid].cwiseProduct(V[uid].cwiseProduct(V[uid])) -
+      0.5*V[rhoid].cwiseProduct(V[vid].cwiseProduct(V[vid]))); // "rhov/rho"
+}
+
+void rungeKutta(
+    // This function performs a runge kutta updating scheme based on the k
+    MatrixXd* U_RK,        // output - Consvar with RK dt stepping  
+    MatrixXd* U,           // input - Consvar before
+    MatrixXd* Res,         // input - Residual 
+    MatrixXd& Volume,      // input - Volume matrix
+    MatrixXd& dt,          // input - timestep matrix
+    int k,                 // input - iteration
+    constants C            // input - constants 
+    ) 
+{
+  int ni = Res[rhoid].cols(); // number int cells i dir
+  int nj = Res[rhoid].rows(); // number in cells j dir
+  int bot = C.num_ghost;
+  int left = C.num_ghost;
+  double dt_val;
+  if (Volume.rows() != nj || Volume.cols() != ni)
+  {
+    cerr << "ERROR: Dimension Mismatch in RK?!?!" << endl;
+    exit(1);
+  } 
+  double a[4];
+  if (C.rk_order == 1)
+  {
+    a[0] = 1.0; a[1]=a[2]=a[3]=0;
+  }
+  if (C.rk_order == 2)
+  {
+    a[0] = 0.5; a[1] = 1.0; a[2]=a[3]=0;
+  }
+  if (C.rk_order == 4)
+  {
+    a[0] = 0.25; a[1] = 1.0/3.0; a[2] = 0.5; a[3] = 1.0;
+  }
+  if (C.rk_order == 3 || C.rk_order > 4)
+  {
+    cerr << "ERROR: RK Order Not Available?!?!" << endl;
+    exit(1);
+  } 
+
+  // set iteration for big matrix
+  int i_c, j_c;
+  for (int j = 0; j < nj; j++)
+  {
+    for (int i = 0; i < ni; i++)
+    {
+      if (C.localdt == 0)
+        dt_val = dt.minCoeff();
+      else
+        dt_val = dt(j,i);
+
+      i_c = left + i;
+      j_c = bot + j;
+      for (int eq = 0; eq < NEQ; eq++) 
+        U_RK[eq](j_c,i_c) = U[eq](j_c,i_c) - a[k]*dt_val*Res[eq](j,i)/Volume(j,i);
+    }
+  }
+}
+
+void computeError(
+    // This function computes the error from the mms solution for case 1 only
+    MatrixXd* Error,       // output - Error of Soln to MMS soln   
+    MatrixXd* V,           // input - numerical soln 
+    MatrixXd* V_MMS,       // input - exact soln
+    constants C            // input - constants
+    )
+{
+  int left = C.num_ghost;
+  int bot = C.num_ghost;
+  int i_c, j_c;
+  for (int j = 0; j < Error[rhoid].rows(); j++)
+  {
+    for (int i = 0; i < Error[rhoid].cols(); i++)
+    {
+      i_c = left + i;
+      j_c = bot + j; 
+      for (int eq = 0; eq < NEQ; eq++)
+        Error[eq](j,i) = V[eq](j_c,i_c) - V_MMS[eq](j_c,i_c);
+    }
+  }
+}
+
+VectorXd computeL2(
+    // This function returns a vector of 4 elements of the norm values
+    MatrixXd* Res,         // input - Residuals 
+    constants C            // input - constants
+    )
+{
+  VectorXd out(NEQ);
+  for (int eq = 0; eq < NEQ; eq++)
+  {
+    MatrixXd temp = Res[eq].cwiseProduct(Res[eq]);
+    out(eq) = sqrt(temp.sum()/Res[eq].size()); // size returns total number of cells
+  }
+  return out;
+}
+
+void computeTimeStep(
+    // this function will compute the local time step for all of the interior cells
+    MatrixXd& dt,          // output - time step at every interior cell      
+    MatrixXd& Volume,      // input - volume of every cell
+    MatrixXd& Ai,          // input - area in i dir 
+    MatrixXd& Aj,          // input - area in j dir
+    MatrixXd& n_i_xhat,    // input - norm i dir x comp
+    MatrixXd& n_i_yhat,    // input - norm i dir y comp
+    MatrixXd& n_j_xhat,    // input - norm j dir x comp
+    MatrixXd& n_j_yhat,    // input - norm j dir y comp
+    MatrixXd& MaxSpeed,    // input - max speed
+    MatrixXd* V,           // input - prim var for speeds
+    constants C            // input - constants for the CFL number
+    )
+{
+
+  int ni = dt.cols();
+  int nj = dt.rows();
+
+  if (Volume.rows() != nj || Volume.cols() != ni)
+  {
+    cerr << "ERROR: Dimension Mismatch in VL Flux?!?!" << endl;
+    exit(1);
+  } 
+
+  // need to get the avg normal vectors
+  double ni_avg_xhat, ni_avg_yhat;
+  double nj_avg_xhat, nj_avg_yhat;
+  // get the eigen value which is != MaxSpeed
+  double lambda_i, lambda_j;
+  double Ai_avg, Aj_avg;
+
+  // add iterables for the cells
+  int i_c, j_c;
+  int bot = C.num_ghost;// first interior cell in j dir
+  int left = C.num_ghost;// first interior cell in i dir
+  for (int j = 0; j < nj; j++)
+  {
+    for (int i = 0; i < ni; i++)
+    {
+      i_c = left + i;
+      j_c = bot + j;
+      // get the avg norm vecs
+      ni_avg_xhat = 0.5*(n_i_xhat(j,i)+n_i_xhat(j,i+1));
+      ni_avg_yhat = 0.5*(n_i_yhat(j,i)+n_i_yhat(j,i+1));
+      nj_avg_xhat = 0.5*(n_j_xhat(j,i)+n_j_xhat(j+1,i));
+      nj_avg_yhat = 0.5*(n_j_yhat(j,i)+n_j_yhat(j+1,i));
+
+      // get avg area
+      Ai_avg = 0.5*(Ai(j,i) + Ai(j,i+1));
+      Aj_avg = 0.5*(Aj(j,i) + Aj(j+1,i));
+
+      // compute max eigen values
+      lambda_i = abs(V[uid](j_c,i_c)*ni_avg_xhat 
+          + V[vid](j_c,i_c)*ni_avg_yhat) + MaxSpeed(j,i);
+      lambda_j = abs(V[uid](j_c,i_c)*nj_avg_xhat 
+          + V[vid](j_c,i_c)*nj_avg_yhat) + MaxSpeed(j,i);
+
+      // compute time step non uniform grid
+      dt(j,i) = C.cfl*Volume(j,i) / (lambda_i*Ai_avg + lambda_j*Aj_avg);
+    }
+  }
+}
+
+void computeMaxSpeed(
+    // This function will compute the max speed used in the computing dt, and can be 
+    // changed for MHD if need be
+    MatrixXd& MaxSpeed,    // output - Max Characteristic Speed (Sound Speed)   
+    MatrixXd* V,           // input - prim var for p and rho
+    constants C            // input - constants maybe for MHD flag
+    )
+{
+  int left =  C.num_ghost; // first interior cell i dir
+  int bot = C.num_ghost; // first interior cell j dir
+
+  int i_c, j_c;
+  for (int j = 0; j < MaxSpeed.rows(); j++)
+  {  
+    for (int i = 0; i < MaxSpeed.cols(); i++)
+    {
+      i_c = left + i;
+      j_c = bot + j;
+      // Use sound speed instead of magnetosonic speed
+      MaxSpeed(j,i) = sqrt(V[pid](j_c,i_c)*GAMMA/V[rhoid](j_c,i_c));
+    }
+  }
+}
+
+void computeRes(
+    // Compute the Residual using fluxes, area, and source terms with volume
+    MatrixXd* Res,         // output - Residual   
+    MatrixXd* F,           // input - F flux (i dir)
+    MatrixXd* G,           // input - G flux (j dir)
+    MatrixXd* S,           // input - Source terms
+    MatrixXd& Ai,          // input - area (i dir)
+    MatrixXd& Aj,          // input - area (j dir) 
+    MatrixXd& Volume,      // input - volume of the cells
+    constants C            // input - constants
+    )
+{
+  for (int j = 0; j < Res[rhoid].rows(); j++)
+  {
+    for (int i = 0; i < Res[rhoid].cols(); i++)
+    {
+      // res = right + top - left - bottom - source
+      for (int eq = 0; eq < NEQ; eq++)
+        Res[eq](j,i) = F[eq](j,i+1)*Ai(j,i+1) + G[eq](j+1,i)*Aj(j+1,i)
+          - F[eq](j,i)*Ai(j,i) - G[eq](j,i)*Aj(j,i) - S[eq](j,i)*Volume(j,i);
+    }
+  }
+}
+
+void primToCons(
+    // This function computes the conservative variables from the primitive variables
+    MatrixXd* U,           // output - Conserved vars
+    MatrixXd* V,           // input - prim vars
+    constants C            // input - constants
+    )
+{
+  U[rhoid] = V[rhoid];//U1 = V1
+  U[rhouid] = V[rhoid].cwiseProduct(V[uid]); //U2 = rhou = V1*V2
+  U[rhovid] = V[rhoid].cwiseProduct(V[vid]); //U3 = rhov = V1*V3
+  //Compute energy U4 = V4/(gamma-1.0) + 0.5*V1*V2*V2 + 0.5*V1*V3*V3
+  U[rhoetid] = V[pid]/(GAMMA - 1.0)
+    + 0.5*V[rhoid].cwiseProduct(V[uid].cwiseProduct(V[uid]))
+    + 0.5*V[rhoid].cwiseProduct(V[vid].cwiseProduct(V[vid]));
+}
+
 void computeFluxVL(
     // This function will compute the van leer flux for arb left and right
     // it will then update flux 
     MatrixXd* Flux,        // output - flux     
     MatrixXd nxhat,        // input - norm vec xhat
     MatrixXd nyhat,        // input - norm vec yhat
-    MatrixXd* V_Left,         // input - left states
-    MatrixXd* V_Right,         // input - right states
+    MatrixXd* V_Left,      // input - left states
+    MatrixXd* V_Right,     // input - right states
     constants C            // input - constants for MHD
     )
 {
@@ -44,9 +286,11 @@ void computeFluxVL(
   double ht_L, ht_R; 
   double Fc[NEQ], Fp[NEQ];
 
+  // grab the correct flux dimensions
   int ni = Flux[0].cols();
   int nj = Flux[0].rows();
 
+  // check dimension mismatch
   if (nxhat.rows() != nj || nxhat.cols() != ni)
   {
     cerr << "ERROR: Dimension Mismatch in VL Flux?!?!" << endl;
@@ -56,48 +300,60 @@ void computeFluxVL(
   {
     for (int j = 0; j < nj; j++)
     {
+      // compute sound speed
       a_L = sqrt(GAMMA*p_L(j,i) / rho_L(j,i)); 
       a_R = sqrt(GAMMA*p_R(j,i) / rho_R(j,i)); 
 
+      // compute speed
       U_L = u_L(j,i)*nxhat(j,i) + v_L(j,i)*nyhat(j,i);
       U_R = u_R(j,i)*nxhat(j,i) + v_R(j,i)*nyhat(j,i);
 
+      // compute mach # from speed Mach is a scalar***
       M_L = U_L/a_L;
       M_R = U_R/a_R;
 
+      // Compute M_+ and M_- see notes sec06 slides > 74
       M_p = 0.25*(M_L + 1)*(M_L + 1);
       M_n = -0.25*(M_R - 1)*(M_R - 1);
 
+      // Compute beta_LR for use in det flux cont
       beta_L = -mymax(0, 1 - int(abs(M_L)));
       beta_R = -mymax(0, 1 - int(abs(M_R)));
 
+      // NOTE SIGN has specific inputs applies sign of b to a SIGN(a,b)
       alpha_p = 0.5*(1 + SIGN(1, M_L));
       alpha_n = 0.5*(1 - SIGN(1, M_R));
 
       c_p = alpha_p*(1+beta_L)*M_L - beta_L*M_p;
       c_n = alpha_n*(1+beta_R)*M_R - beta_R*M_n;
 
+      // compute avg pressure
       p_bar_p = M_p*(-M_L + 2);
       p_bar_n = M_n*(-M_R - 2);
 
+      // compute diff pos and neg
       D_p = alpha_p*(1+beta_L) - beta_L*p_bar_p;
       D_n = alpha_n*(1+beta_R) - beta_R*p_bar_n;
 
+      // left and right enthalpy
       ht_L = (GAMMA/(GAMMA-1))*p_L(j,i)/rho_L(j,i) 
         + 0.5*( u_L(j,i)*u_L(j,i) + v_L(j,i)*v_L(j,i));
       ht_R = (GAMMA/(GAMMA-1))*p_R(j,i)/rho_R(j,i) 
         + 0.5*( u_R(j,i)*u_R(j,i) + v_R(j,i)*v_R(j,i));
 
+      // compute convective flux contribution
       Fc[0] = rho_L(j,i)*a_L*c_p + rho_R(j,i)*a_R*c_n;
       Fc[1] = rho_L(j,i)*a_L*c_p*u_L(j,i) + rho_R(j,i)*a_R*c_n*u_R(j,i);
       Fc[2] = rho_L(j,i)*a_L*c_p*v_L(j,i) + rho_R(j,i)*a_R*c_n*v_R(j,i);
       Fc[3] = rho_L(j,i)*a_L*c_p*ht_L + rho_R(j,i)*a_R*c_n*ht_R;
 
+      // compute pressure flux contribution
       Fp[0] = 0.0;
       Fp[1] = D_p*nxhat(j,i)*p_L(j,i) + D_n*nxhat(j,i)*p_R(j,i);
       Fp[2] = D_p*nyhat(j,i)*p_L(j,i) + D_n*nyhat(j,i)*p_R(j,i);
       Fp[3] = 0.0;
 
+      // loop over and add the two
       for (int eq = 0; eq < NEQ; eq++)
         Flux[eq](j,i) = Fc[eq] + Fp[eq];
     }
@@ -130,7 +386,7 @@ void computeFluxRoe(
   MatrixXd p_L = V_Left[pid];
   MatrixXd p_R = V_Right[pid];
 
-  // define roe vars
+  // define roe averaged vars
   double rho_Roe;
   double u_Roe;
   double v_Roe;
@@ -141,56 +397,67 @@ void computeFluxRoe(
   double a_Roe;
   double R_Roe;
 
+  // need delta's to compute the characteristic vars
   double drho, du, dv, dp;
   double dw1, dw2, dw3, dw4;
 
   // eigen vals
   double lambda1, lambda2, lambda3, lambda4;
   double eps = 0.1; // correction term
+  // right eigen vectors
   double r1[NEQ], r2[NEQ], r3[NEQ], r4[NEQ];
 
+  // Used to find the 1st order contribution to the flux determination
   double F_L[NEQ];
   double F_R[NEQ];
 
+  // 2nd order contribution
   double sum2ndOrder;
 
   int ni = u_L.cols();
   int nj = u_L.rows();
 
+  // check for dimension mismatch
   if (nxhat.rows() != nj || nxhat.cols() != ni)
   {
     cerr << "ERROR: Dimension Mismatch in Roe Flux?!?!" << endl;
     exit(1);
   } 
-
   for (int j = 0; j < nj; j++)
   {
     for (int i = 0; i < ni; i++)
     {
+      // compute roe avgd quantities like before
       R_Roe = sqrt(rho_R(j,i)/rho_L(j,i));
       rho_Roe = R_Roe*rho_L(j,i);
       u_Roe = (R_Roe*u_R(j,i) + u_L(j,i)) / (R_Roe + 1);
       v_Roe = (R_Roe*v_R(j,i) + v_L(j,i)) / (R_Roe + 1);
+      // Find the 2D effect on the speed
       U_hat_Roe = u_Roe*nxhat(j,i) + v_Roe*nyhat(j,i);// get the speed
 
+      // Roe averaged vars
       ht_L = (GAMMA/(GAMMA-1))*p_L(j,i)/rho_L(j,i) 
         + 0.5*( u_L(j,i)*u_L(j,i) + v_L(j,i)*v_L(j,i));
       ht_R = (GAMMA/(GAMMA-1))*p_R(j,i)/rho_R(j,i) 
         + 0.5*( u_R(j,i)*u_R(j,i) + v_R(j,i)*v_R(j,i));
       ht_Roe = (R_Roe*ht_R + ht_L) / (R_Roe + 1);
 
+      // sound speed with the energy uu+vv (2D)
       a_Roe = sqrt((GAMMA-1)*( ht_Roe - 0.5*(u_Roe*u_Roe + v_Roe*v_Roe)));
 
+      // Two of the eigen values are repeated
       lambda1 = abs(U_hat_Roe); // speed 
       lambda2 = abs(U_hat_Roe); // speed
       lambda3 = abs(U_hat_Roe + a_Roe); // u+a 1D
       lambda4 = abs(U_hat_Roe - a_Roe); // u-a 1D
 
+      // fix the repeated eigen values
       if (lambda1 < 2*eps*a_Roe)
       {
         lambda1 = lambda1*lambda1/(4*eps*a_Roe) + eps*a_Roe;
         lambda2 = lambda2*lambda2/(4*eps*a_Roe) + eps*a_Roe;
       }
+      // fix the u+a and u-a
       if (lambda3 < 2*eps*a_Roe)
         lambda3 = lambda3*lambda3/(4*eps*a_Roe) + eps*a_Roe;
       if (lambda4 < 2*eps*a_Roe)
@@ -229,6 +496,7 @@ void computeFluxRoe(
       dw3 = du*nxhat(j,i) + dv*nyhat(j,i) + dp/(rho_Roe*a_Roe);
       dw4 = du*nxhat(j,i) + dv*nyhat(j,i) - dp/(rho_Roe*a_Roe);
 
+      // compute components of the speed for the Left and Right states
       U_hat_Roe_L = ( u_L(j,i)*nxhat(j,i) + v_L(j,i)*nyhat(j,i));
       U_hat_Roe_R = ( u_R(j,i)*nxhat(j,i) + v_R(j,i)*nyhat(j,i));
 
@@ -246,16 +514,14 @@ void computeFluxRoe(
       F_R[3] = rho_R(j,i)*ht_R*U_hat_Roe_R;
 
       // Combine 1st order and 2nd order
-
-
       // sum over the right vectors
-
       for (int eq = 0; eq < NEQ; eq++)
       {
         sum2ndOrder=0.5*(abs(lambda1)*dw1*r1[eq]
             + abs(lambda2)*dw2*r2[eq]
             + abs(lambda3)*dw3*r3[eq]
             + abs(lambda4)*dw4*r4[eq]);
+        // flux = 1st order - 2ndordersum(vec(r)*vec(dw)*abs(lambda)
         Flux[eq](j,i) = 0.5*(F_L[eq]+F_R[eq]) - sum2ndOrder;
       }
     }
@@ -278,7 +544,7 @@ void compute2DFlux(
     constants C            // input - constants for Roe or VL flags
     )
 {
-
+  // take care of F and G flux
   if (C.f_upwind == 1)
   {
     // i dir
@@ -308,6 +574,7 @@ void applyLimiter(
     constants C            // input - constants for limiter flag
     ) 
 {
+  // C.f_limiter can take on 7 values
   switch (C.f_limiter)
   {
     case 0:  // no limiter
@@ -383,7 +650,7 @@ void computeUpwindVBT(
         double r_p = (V[eq](j+2,i) - V[eq](j+1, i))/denom;
         double r_n = (V[eq](j,i) - V[eq](j-1, i))/denom;
         // Apply Limiters
-        double psi_p, psi_n;
+        double psi_p, psi_n; // used in the apply limiter func
         applyLimiter(psi_p, psi_n, r_p, r_n, C);
         Psi_Pos[eq](j+1,i) = psi_p;
         Psi_Neg[eq](j+1,i) = psi_n;
@@ -509,6 +776,7 @@ void MUSCL(
     constants C            // input - constants for flags
     )
 {
+  // keeps main file concise
   computeUpwindVLR(V_L, V_R, V, C);
   computeUpwindVBT(V_B, V_T, V, C);
 }
