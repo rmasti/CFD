@@ -141,20 +141,39 @@ int main( int argc, char *argv[] )
     // set BC STILL TO DO
   }
   /////////////////////////////////////////////////////////////
-  ////////////////////// EXTRAPOLATE //////////////////////////
+  //////////////// EXTRAPOLATE, COMPUTE FLUXES ////////////////
   /////////////////////////////////////////////////////////////
-  cout << "Performing MUSCL Extrap... " << endl;
-  MUSCL(V_L,V_R,V_B,V_T,V,C);
+  cout << "Performing MUSCL Extrap... " << endl; 
+  MUSCL(V_L,V_R,V_B,V_T,V,C); // MATCHES for case 1
+  cout << "Computing Fluxes... " << endl; 
+  compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C);
 
-  cout << V_L[rhoid].rows() << " c=" << V_L[rhoid].cols() <<  endl;
+//  cout << V_L[rhoid].rows() << " c=" << V_L[rhoid].cols() <<  endl;
   /////////////////////////////////////////////////////////////
   /////////////////// OUTPUT ARRAYS ///////////////////////////
   /////////////////////////////////////////////////////////////
+
+  outputArray("n_i_x", n_i_xhat, 0);
+  outputArray("n_i_y", n_i_yhat, 0);
+  outputArray("n_j_x", n_j_xhat, 0);
+  outputArray("n_j_y", n_j_yhat, 0);
+ 
+  
+  outputArray("F1", F[frhouid], 0);
+  outputArray("F2", F[frhouuid], 0);
+  outputArray("F3", F[frhouvid], 0);
+  outputArray("F4", F[frhouhtid], 0);
+ 
+  outputArray("G1", G[grhovid], 0);
+  outputArray("G2", G[grhouvid], 0);
+  outputArray("G3", G[grhovvid], 0);
+  outputArray("G4", G[grhovhtid], 0);
+  
   outputArray("rho", V[rhoid], 0);
   outputArray("u", V[uid], 0);
   outputArray("v", V[vid], 0);
   outputArray("p", V[pid], 0);
-  
+
   outputArray("rho_L", V_L[rhoid], 0);
   outputArray("u_L", V_L[uid], 0);
   outputArray("v_L", V_L[vid], 0);
@@ -175,10 +194,10 @@ int main( int argc, char *argv[] )
   outputArray("v_T", V_T[vid], 0);
   outputArray("p_T", V_T[pid], 0);
 
-  outputArray("rhomms", V_MMS[rhoid], 0);
-  outputArray("umms", V_MMS[uid], 0);
-  outputArray("vmms", V_MMS[vid], 0);
-  outputArray("pmms", V_MMS[pid], 0);
+  outputArray("rho_mms", V_MMS[rhoid], 0);
+  outputArray("u_mms", V_MMS[uid], 0);
+  outputArray("v_mms", V_MMS[vid], 0);
+  outputArray("p_mms", V_MMS[pid], 0);
  
   outputArray("S1", S[rhoid], 0);
   outputArray("S2", S[rhouid], 0);

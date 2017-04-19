@@ -30,7 +30,8 @@ using namespace Eigen;
 
 #define R 287.058
 #define GAMMA 1.4
-#define PI 3.14159265359
+//#define PI 3.14159265359
+#define PI 3.1415926
 #define NEQ 4
 
 // DEFINE ELEMENT IDENTIFIERS
@@ -118,6 +119,10 @@ double SIGN(double a, double b);
 
 void applyLimiter(double& psi_p, double& psi_n, double r_p, double r_n, constants C);
 
+void compute2DFlux(MatrixXd* F, MatrixXd* G, MatrixXd& n_i_xhat, MatrixXd& n_i_yhat, MatrixXd& n_j_xhat, MatrixXd& n_j_yhat, MatrixXd* V_L, MatrixXd* V_R, MatrixXd* V_B, MatrixXd* V_T, constants C);
 
+void computeFluxRoe(MatrixXd* Flux, MatrixXd nxhat, MatrixXd nyhat, MatrixXd* V_Left, MatrixXd* V_Right, constants C);
+
+void computeFluxVL(MatrixXd* Flux, MatrixXd nxhat, MatrixXd nyhat, MatrixXd* V_Left, MatrixXd* V_Right, constants C);
 
 #endif

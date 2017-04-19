@@ -4,7 +4,7 @@ f_mesh: 1;           // 1-4 for all cases except the curvilinear which has 6
 
 f_supersonic: 1;     // 1 for supersonic, 0 for subsonic
 
-f_AOA: 1;            // 1 for 0 deg, 2 for 8 deg for case 3 only
+f_AOA: 2;            // 1 for 0 deg, 2 for 8 deg for case 3 only
 
 f_upwind: 1;         // 1 for van leer, 2 for good ole Roe FDS
 

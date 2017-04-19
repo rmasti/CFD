@@ -8,6 +8,295 @@
  */
 #include "fp.hpp" //structure templates and func prototypes and libs
 
+void computeFluxVL(
+    // This function will compute the van leer flux for arb left and right
+    // it will then update flux 
+    MatrixXd* Flux,        // output - flux     
+    MatrixXd nxhat,        // input - norm vec xhat
+    MatrixXd nyhat,        // input - norm vec yhat
+    MatrixXd* V_Left,         // input - left states
+    MatrixXd* V_Right,         // input - right states
+    constants C            // input - constants for MHD
+    )
+{
+  // Grab the matrices for the sake of cleanliness
+  MatrixXd rho_L = V_Left[rhoid];
+  MatrixXd rho_R = V_Right[rhoid];
+
+  MatrixXd u_L = V_Left[uid];
+  MatrixXd u_R = V_Right[uid];
+
+  MatrixXd v_L = V_Left[vid];
+  MatrixXd v_R = V_Right[vid];
+
+  MatrixXd p_L = V_Left[pid];
+  MatrixXd p_R = V_Right[pid];
+
+  // define constants
+  double M_L, M_R, M_p, M_n;
+  double beta_L, beta_R;
+  double alpha_p, alpha_n;
+  double c_p, c_n;
+  double a_L, a_R;
+  double U_L, U_R;
+  double D_p, D_n;
+  double p_bar_p, p_bar_n;
+  double ht_L, ht_R; 
+  double Fc[NEQ], Fp[NEQ];
+
+  int ni = Flux[0].cols();
+  int nj = Flux[0].rows();
+
+  if (nxhat.rows() != nj || nxhat.cols() != ni)
+  {
+    cerr << "ERROR: Dimension Mismatch in VL Flux?!?!" << endl;
+    exit(1);
+  } 
+  for (int i = 0; i < ni; i++)
+  {
+    for (int j = 0; j < nj; j++)
+    {
+      a_L = sqrt(GAMMA*p_L(j,i) / rho_L(j,i)); 
+      a_R = sqrt(GAMMA*p_R(j,i) / rho_R(j,i)); 
+
+      U_L = u_L(j,i)*nxhat(j,i) + v_L(j,i)*nyhat(j,i);
+      U_R = u_R(j,i)*nxhat(j,i) + v_R(j,i)*nyhat(j,i);
+
+      M_L = U_L/a_L;
+      M_R = U_R/a_R;
+
+      M_p = 0.25*(M_L + 1)*(M_L + 1);
+      M_n = -0.25*(M_R - 1)*(M_R - 1);
+
+      beta_L = -mymax(0, 1 - int(abs(M_L)));
+      beta_R = -mymax(0, 1 - int(abs(M_R)));
+
+      alpha_p = 0.5*(1 + SIGN(1, M_L));
+      alpha_n = 0.5*(1 - SIGN(1, M_R));
+
+      c_p = alpha_p*(1+beta_L)*M_L - beta_L*M_p;
+      c_n = alpha_n*(1+beta_R)*M_R - beta_R*M_n;
+
+      p_bar_p = M_p*(-M_L + 2);
+      p_bar_n = M_n*(-M_R - 2);
+
+      D_p = alpha_p*(1+beta_L) - beta_L*p_bar_p;
+      D_n = alpha_n*(1+beta_R) - beta_R*p_bar_n;
+
+      ht_L = (GAMMA/(GAMMA-1))*p_L(j,i)/rho_L(j,i) 
+        + 0.5*( u_L(j,i)*u_L(j,i) + v_L(j,i)*v_L(j,i));
+      ht_R = (GAMMA/(GAMMA-1))*p_R(j,i)/rho_R(j,i) 
+        + 0.5*( u_R(j,i)*u_R(j,i) + v_R(j,i)*v_R(j,i));
+
+      Fc[0] = rho_L(j,i)*a_L*c_p + rho_R(j,i)*a_R*c_n;
+      Fc[1] = rho_L(j,i)*a_L*c_p*u_L(j,i) + rho_R(j,i)*a_R*c_n*u_R(j,i);
+      Fc[2] = rho_L(j,i)*a_L*c_p*v_L(j,i) + rho_R(j,i)*a_R*c_n*v_R(j,i);
+      Fc[3] = rho_L(j,i)*a_L*c_p*ht_L + rho_R(j,i)*a_R*c_n*ht_R;
+
+      Fp[0] = 0.0;
+      Fp[1] = D_p*nxhat(j,i)*p_L(j,i) + D_n*nxhat(j,i)*p_R(j,i);
+      Fp[2] = D_p*nyhat(j,i)*p_L(j,i) + D_n*nyhat(j,i)*p_R(j,i);
+      Fp[3] = 0.0;
+
+      for (int eq = 0; eq < NEQ; eq++)
+        Flux[eq](j,i) = Fc[eq] + Fp[eq];
+    }
+  }
+}
+
+void computeFluxRoe(
+    // This function will compute the flux for an arbitrary 
+    // Left and right state direction which means it will work
+    // for top and bottom, it will modify F1-F4,
+    MatrixXd* Flux,        // output - flux component cont 
+    MatrixXd nxhat,        // input - normal vector xhat comp         
+    MatrixXd nyhat,        // input - normal vector yhat comp
+    MatrixXd* V_Left,         // input - Left state
+    MatrixXd* V_Right,         // input - Right state
+    constants C            // input - constants for MHD maybe
+    )
+{
+
+  // Grab the matrices for the sake of cleanliness
+  MatrixXd rho_L = V_Left[rhoid];
+  MatrixXd rho_R = V_Right[rhoid];
+
+  MatrixXd u_L = V_Left[uid];
+  MatrixXd u_R = V_Right[uid];
+
+  MatrixXd v_L = V_Left[vid];
+  MatrixXd v_R = V_Right[vid];
+
+  MatrixXd p_L = V_Left[pid];
+  MatrixXd p_R = V_Right[pid];
+
+  // define roe vars
+  double rho_Roe;
+  double u_Roe;
+  double v_Roe;
+  double U_hat_Roe_R, U_hat_Roe_L;
+  double U_hat_Roe;
+  double ht_L, ht_R;
+  double ht_Roe;
+  double a_Roe;
+  double R_Roe;
+
+  double drho, du, dv, dp;
+  double dw1, dw2, dw3, dw4;
+
+  // eigen vals
+  double lambda1, lambda2, lambda3, lambda4;
+  double eps = 0.1; // correction term
+  double r1[NEQ], r2[NEQ], r3[NEQ], r4[NEQ];
+
+  double F_L[NEQ];
+  double F_R[NEQ];
+
+  double sum2ndOrder;
+
+  int ni = u_L.cols();
+  int nj = u_L.rows();
+
+  if (nxhat.rows() != nj || nxhat.cols() != ni)
+  {
+    cerr << "ERROR: Dimension Mismatch in Roe Flux?!?!" << endl;
+    exit(1);
+  } 
+
+  for (int j = 0; j < nj; j++)
+  {
+    for (int i = 0; i < ni; i++)
+    {
+      R_Roe = sqrt(rho_R(j,i)/rho_L(j,i));
+      rho_Roe = R_Roe*rho_L(j,i);
+      u_Roe = (R_Roe*u_R(j,i) + u_L(j,i)) / (R_Roe + 1);
+      v_Roe = (R_Roe*v_R(j,i) + v_L(j,i)) / (R_Roe + 1);
+      U_hat_Roe = u_Roe*nxhat(j,i) + v_Roe*nyhat(j,i);// get the speed
+
+      ht_L = (GAMMA/(GAMMA-1))*p_L(j,i)/rho_L(j,i) 
+        + 0.5*( u_L(j,i)*u_L(j,i) + v_L(j,i)*v_L(j,i));
+      ht_R = (GAMMA/(GAMMA-1))*p_R(j,i)/rho_R(j,i) 
+        + 0.5*( u_R(j,i)*u_R(j,i) + v_R(j,i)*v_R(j,i));
+      ht_Roe = (R_Roe*ht_R + ht_L) / (R_Roe + 1);
+
+      a_Roe = sqrt((GAMMA-1)*( ht_Roe - 0.5*(u_Roe*u_Roe + v_Roe*v_Roe)));
+
+      lambda1 = abs(U_hat_Roe); // speed 
+      lambda2 = abs(U_hat_Roe); // speed
+      lambda3 = abs(U_hat_Roe + a_Roe); // u+a 1D
+      lambda4 = abs(U_hat_Roe - a_Roe); // u-a 1D
+
+      if (lambda1 < 2*eps*a_Roe)
+      {
+        lambda1 = lambda1*lambda1/(4*eps*a_Roe) + eps*a_Roe;
+        lambda2 = lambda2*lambda2/(4*eps*a_Roe) + eps*a_Roe;
+      }
+      if (lambda3 < 2*eps*a_Roe)
+        lambda3 = lambda3*lambda3/(4*eps*a_Roe) + eps*a_Roe;
+      if (lambda4 < 2*eps*a_Roe)
+        lambda4 = lambda4*lambda4/(4*eps*a_Roe) + eps*a_Roe;
+
+      // fill in the right eigen vectors
+      r1[0] = 1.0;
+      r1[1] = u_Roe;
+      r1[2] = v_Roe;
+      r1[3] = 0.5*(u_Roe*u_Roe + v_Roe*v_Roe);
+
+      r2[0] = 0.0;
+      r2[1] = rho_Roe * nyhat(j,i);
+      r2[2] = -rho_Roe * nxhat(j,i);
+      r2[3] = rho_Roe*(u_Roe*nyhat(j,i) - v_Roe*nxhat(j,i));
+
+      r3[0] = (0.5*rho_Roe/a_Roe);
+      r3[1] = (0.5*rho_Roe/a_Roe) * ( u_Roe + a_Roe*nxhat(j,i) );
+      r3[2] = (0.5*rho_Roe/a_Roe) * ( v_Roe + a_Roe*nyhat(j,i) );
+      r3[3] = (0.5*rho_Roe/a_Roe) * ( ht_Roe + a_Roe*U_hat_Roe );
+
+      r4[0] = (-0.5*rho_Roe/a_Roe);
+      r4[1] = (-0.5*rho_Roe/a_Roe) * ( u_Roe - a_Roe*nxhat(j,i) );
+      r4[2] = (-0.5*rho_Roe/a_Roe) * ( v_Roe - a_Roe*nyhat(j,i) );
+      r4[3] = (-0.5*rho_Roe/a_Roe) * ( ht_Roe - a_Roe*U_hat_Roe );
+
+      // compute delta's
+      drho = rho_R(j,i) - rho_L(j,i);
+      du = u_R(j,i) - u_L(j,i);
+      dv = v_R(j,i) - v_L(j,i);
+      dp = p_R(j,i) - p_L(j,i);
+
+      // compute characteristic variables
+      dw1 = drho - dp/(a_Roe*a_Roe);
+      dw2 = du*nyhat(j,i) - dv*nxhat(j,i);
+      dw3 = du*nxhat(j,i) + dv*nyhat(j,i) + dp/(rho_Roe*a_Roe);
+      dw4 = du*nxhat(j,i) + dv*nyhat(j,i) - dp/(rho_Roe*a_Roe);
+
+      U_hat_Roe_L = ( u_L(j,i)*nxhat(j,i) + v_L(j,i)*nyhat(j,i));
+      U_hat_Roe_R = ( u_R(j,i)*nxhat(j,i) + v_R(j,i)*nyhat(j,i));
+
+      // grab the first order contributions
+      F_L[0] = rho_L(j,i)*U_hat_Roe_L;
+      F_R[0] = rho_R(j,i)*U_hat_Roe_R;
+
+      F_L[1] = rho_L(j,i)*u_L(j,i)*U_hat_Roe_L + p_L(j,i)*nxhat(j,i);
+      F_R[1] = rho_R(j,i)*u_R(j,i)*U_hat_Roe_R + p_R(j,i)*nxhat(j,i);
+
+      F_L[2] = rho_L(j,i)*v_L(j,i)*U_hat_Roe_L + p_L(j,i)*nxhat(j,i);
+      F_R[2] = rho_R(j,i)*v_R(j,i)*U_hat_Roe_R + p_R(j,i)*nxhat(j,i);
+
+      F_L[3] = rho_L(j,i)*ht_L*U_hat_Roe_L;
+      F_R[3] = rho_R(j,i)*ht_R*U_hat_Roe_R;
+
+      // Combine 1st order and 2nd order
+
+
+      // sum over the right vectors
+
+      for (int eq = 0; eq < NEQ; eq++)
+      {
+        sum2ndOrder=0.5*(abs(lambda1)*dw1*r1[eq]
+            + abs(lambda2)*dw2*r2[eq]
+            + abs(lambda3)*dw3*r3[eq]
+            + abs(lambda4)*dw4*r4[eq]);
+        Flux[eq](j,i) = 0.5*(F_L[eq]+F_R[eq]) - sum2ndOrder;
+      }
+    }
+  }
+}
+
+void compute2DFlux(
+    // This function will take in the Left Right Bottom and Top States,
+    // and compute F flux, and G flux respectively.
+    MatrixXd* F,           // output - F dir flux (x)         
+    MatrixXd* G,           // output - G dir flux (y)
+    MatrixXd& n_i_xhat,    // input - xhat normal in i
+    MatrixXd& n_i_yhat,    // input - yhat normal in i
+    MatrixXd& n_j_xhat,    // input - xhat normal in j
+    MatrixXd& n_j_yhat,    // input - yhat normal in j
+    MatrixXd* V_L,         // input - Left state prim var
+    MatrixXd* V_R,         // input - Right state prim var
+    MatrixXd* V_B,         // input - Bottom state prim var
+    MatrixXd* V_T,         // input - Top state prim var
+    constants C            // input - constants for Roe or VL flags
+    )
+{
+
+  if (C.f_upwind == 1)
+  {
+    // i dir
+    computeFluxVL(F, n_i_xhat, n_i_yhat, V_L, V_R, C);
+    // j dir
+    computeFluxVL(G, n_j_xhat, n_j_yhat, V_B, V_T, C);
+  }
+  else if (C.f_upwind == 2)
+  {
+    computeFluxRoe(F, n_i_xhat, n_i_yhat, V_L, V_R, C);
+    computeFluxRoe(G, n_j_xhat, n_j_yhat, V_B, V_T, C);
+  }
+  else
+  {
+    cerr << "ERROR: C.f_upwind Not Defined Correctly!!" << endl;
+    exit(1);
+  }
+}
 
 void applyLimiter(
     // This function avoids repeated code chucks it takes in the iteration number and output 
@@ -430,7 +719,11 @@ void outputArray(
   Address = Address + FileName + Sub + num_iter + Suffix; // can combine string
   ofstream outfile; // output
   outfile.open(Address.c_str()); // access string component
-  outfile << setprecision(14) << out.transpose() << endl; // output trans
+
+  // Alot of options for outputting this is just nice to see 
+  // where lines end and start
+  IOFormat CleanFmt(14,0,", ", "\n", "[", "]");
+  outfile << out.transpose().format(CleanFmt) << endl; // output trans
   //outfile << setprecision(14) << out << endl; // output trans
 }
 
