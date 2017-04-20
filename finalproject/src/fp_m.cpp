@@ -160,6 +160,7 @@ int main( int argc, char *argv[] )
   {
     for (int k = 0; k < C.rk_order; k++)
     {
+      // RK takes k steps for a given dt 
       rungeKutta(U_RK, U, Res, Volume, dt, k, C); // update interior
       consToPrim(V, U_RK, C); // convert to prim var and apply BC's
       computeTemperature(T, V); // grab temp for B.C.'s

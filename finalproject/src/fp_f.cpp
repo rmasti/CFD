@@ -10,6 +10,119 @@
 
 
 
+
+
+void symmetricBC(
+    // This function returns the primvar with updated ghost cells 
+    // applying the symmetric bc specifically for 30D inlet
+    MatrixXd* V,           // output - Prim var   
+    int Begin[],           // input - beginning coord of wall
+    int End[],             // input - ending coord of wall
+    constants C            // input - constants for numcells
+    )
+{
+  int ni_g = V[rhoid].cols();
+  int nj_g = V[rhoid].rows();
+
+  int ni = ni_g - 2*C.num_ghost;
+  int nj = nj_g - 2*C.num_ghost;
+
+  // zoomed in pic the the first interior is numghost+num_ghost away
+  //... # # # # <- 
+  //... # # # #
+  //... # # # #
+  //... # # # #
+  //...........
+  int i_in_Begin = Begin[1] + C.num_ghost; // 1st interior i dir
+  int j_in_Begin = Begin[0] + C.num_ghost; // 1st interior j dir
+  int i_in_End = End[1] + C.num_ghost; // shifted by numghost
+  int j_in_End = End[0] + C.num_ghost;
+
+  // This bc applies to the symm wall in figure in setBC func
+  // It will extrapolate in the i dir while loop over the j coord
+  int i_g, j_e;
+  for (int j = 0; j <= End[0]-Begin[0]; j++) // loop over j on edge
+  {
+    for (int i = 0; i < C.num_ghost; i++)
+    {
+      i_g = i_in_Begin - 1; // index of ghost cell starting near to edge
+      j_e = j_in_Begin; // Start of the edge that inc by j
+      V[rhoid](j_e+j,i_g-i) = V[rhoid](j_e+j,i_g+i+1); // first int
+      V[uid](j_e+j,i_g-i) = V[uid](j_e+j,i_g+i+1); 
+      V[vid](j_e+j,i_g-i) = -V[vid](j_e+j,i_g+i+1); // bounce back
+      V[pid](j_e+j,i_g-i) = V[pid](j_e+j,i_g+i+1); 
+    }
+  }
+}
+
+void setBC(
+    // Apply BC for cases 2 and 3, God Help Me
+    MatrixXd* V,           // output - prim var  
+    MatrixXd& n_i_xhat,    // input - norm vec i dir x comp
+    MatrixXd& n_i_yhat,    // input - norm vec i dir y comp
+    MatrixXd& n_j_xhat,    // input - norm vec j dir x comp
+    MatrixXd& n_j_yhat,    // input - norm vec j dir y comp
+    constants C            // input - constants C for case
+    )
+{
+  int ni = V[rhoid].cols();
+  int nj = V[rhoid].rows();
+
+  switch (C.f_case)
+  {
+    case 1: // curvilinear MMS BC
+      {
+        cerr << "ERROR: Not Apply the Correct BC's !!" << endl;
+        exit(1);
+        break;
+      }
+    case 2:
+      {
+        int joint;
+        // plotting the grid this is the joint of the upper bend
+        joint = 10*pow(2, C.f_mesh); 
+
+
+
+        // MESH STRUCTURE
+        //    joint                      Outlet End  
+        //      |                          |
+        //      V                          V
+        //InE   **************************** <-UpperWall
+        // |-> ***************************** 
+        //    ******************************
+        //InB*******    A                  A
+        //| *******     |                  |
+        //V******* lower wall          Outlet Begin
+        //******* <-sym wall
+
+        // Index coordinates  see figure above
+        int Lower_Begin[2] = {0 , 0};
+        int Lower_End[2] = {0,ni-1};
+
+        int Upper_Begin[2] = {nj-1, joint};
+        int Upper_End[2] = { nj-1,ni-1};
+
+        int Inlet_Begin[2] = {nj-1, 0};
+        int Inlet_End[2] = {nj-1 , joint-1};
+
+        int Outlet_Begin[2] = {0, ni-1};
+        int Outlet_End[2] = {ni-1, nj-1};
+
+        int Sym_Begin[2] = {0,0};
+        int Sym_End[2] = {nj-1 , 0};
+     
+
+      }
+    case 3:
+      {
+      
+      
+      
+      }
+  }
+}
+
 void consToPrim(
     // This function converts conserved vars to prim vars
     MatrixXd* V,           // output - Prim var   

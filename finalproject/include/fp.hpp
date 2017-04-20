@@ -142,4 +142,10 @@ void rungeKutta(MatrixXd* U_RK, MatrixXd* U, MatrixXd* Res, MatrixXd& Volume, Ma
 
 void consToPrim(MatrixXd* V, MatrixXd* U, constants C);
 
+void setBC(MatrixXd* V, MatrixXd& n_i_xhat, MatrixXd& n_i_yhat, MatrixXd& n_j_xhat, MatrixXd& n_j_yhat, constants C);
+
+void symmetricBC(MatrixXd* V, int Begin[], int End[], constants C);
+
+
+
 #endif
