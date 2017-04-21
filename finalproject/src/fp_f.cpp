@@ -10,7 +10,198 @@
 
 
 
+void slipwallBC(
+    // This function will allow the normal velocity from the boundary to reflect but simultan
+    // eously keep the parrallel to the boundary vel unchanged
+    MatrixXd* V,           // output - Prim var  
+    int Begin[],           // input - Beginning index coord
+    int End[],             // input - Ending index coord 
+    MatrixXd& n_i_xhat,    // input - norm vec i dir x comp
+    MatrixXd& n_i_yhat,    // input - norm vec i dir y comp
+    MatrixXd& n_j_xhat,    // input - norm vec j dir x comp
+    MatrixXd& n_j_yhat,    // input - norm vec j dir y comp
+    MatrixXd& T,           // input - temperature at cells
+    constants C            // input - constants for num ghosts
+    )
+{
+  int ni_g = V[rhoid].cols();
+  int nj_g = V[rhoid].rows();
 
+  int ni = ni_g - 2*C.num_ghost;
+  int nj = nj_g - 2*C.num_ghost;
+
+  int i_in_Begin = Begin[1] + C.num_ghost; // 1st interior i dir
+  int j_in_Begin = Begin[0] + C.num_ghost; // 1st interior j dir
+  int i_in_End = End[1] + C.num_ghost; // shifted by numghost
+  int j_in_End = End[0] + C.num_ghost;
+  int I, J;
+  int sign;
+  int BC_index;
+  double nx, ny, uvel, vvel;
+  double Temp;
+
+  if (i_in_Begin = i_in_End) // Then we are along a vertical boundary loop over j
+  {
+    if (i_in_Begin == C.num_ghost) // detect whether the ghost cells are on the left (i=3)
+    {
+      sign = -1; // the face points in the - direction
+      BC_index = Begin[1];
+    }
+    else if (i_in_Begin == ni + C.num_ghost - 1) // now its on the right wall so sign + and 
+    {
+      sign = 1;
+      BC_index = Begin[1] + 1;
+    }
+    else
+    {
+      cerr << "ERROR: Not Applying the Correct SlipWall BC's !!" << endl;
+      exit(1);
+    }
+
+    // LOOP OVER THE J-Dir for a vertical boundary!!!!!!!!!!!!!
+    for (int j = 0; j <= End[0] - Begin[0]; j++)
+    {
+      for (int i = 0; i < C.num_ghost; i++)
+      {
+        I = i_in_Begin + sign*1; // gives the first coln inside the ghost cell
+        J = j_in_Begin; // this give first j index
+        nx = n_i_xhat(Begin[0]+j, BC_index); // get the normal vec comp in the xdir
+        ny = n_i_yhat(Begin[0]+j, BC_index); // get normal vec comp in the y dir
+        uvel = V[uid](J+j, i_in_Begin - sign*i); // sign says okay push left for g
+        vvel = V[vid](J+j, i_in_Begin - sign*i); // or push right for g
+        Temp = T(J+j, i_in_Begin - sign*i); // temperature 
+
+        // get the velocity
+        V[uid](J+j, I+sign*i) = -nx*(uvel*nx+vvel*ny) - ny*(-uvel*ny + vvel*nx);
+        V[vid](J+j, I+sign*i) = -ny*(uvel*nx+vvel*ny) + nx*(-uvel*ny + vvel*nx);
+
+        // extrapolate P
+        V[pid](J+j, I+sign*i) =  2.0*V[pid](J+j, I+sign*i - sign*1)-2.0*V[pid](J+j, I+sign*i - sign*2);
+        T(J+j, I+sign*i) = Temp; // copy temperature extrapolate pressure then compute rho
+        V[rhoid](J+j, I+sign*i) = V[pid](J+j, I+sign*i) / (R*T(J+j, I+sign*i));
+      }
+    }
+  }
+  else if (j_in_Begin == j_in_End) // now have horizontal boundary
+  {
+    if (j_in_Begin == C.num_ghost) // at lowere
+    {
+      sign = -1;
+      BC_index = Begin[0];
+    }
+    else if ( j_in_Begin == nj + C.num_ghost-1 ) // top boundary
+    {
+      sign = -1;
+      BC_index = Begin[0] + 1;
+    }
+    else
+    {
+      cerr << "ERROR: Not Applying the Correct SlipWall BC's !!" << endl;
+      exit(1);
+    }
+    for (int j = 0 ; j < C.num_ghost; j++)
+    {
+      for (int i = 0 ; i <= End[1]-Begin[1]; i++)
+      {
+        I = i_in_Begin;          // I is the looping dir
+        J = j_in_Begin + sign*1; // j is the num ghost dir
+        nx = n_j_xhat(BC_index, Begin[1]+i);
+        ny = n_j_yhat(BC_index, Begin[1]+i);
+        uvel = V[uid](j_in_Begin - sign*j, I+i); // copy val
+        vvel = V[vid](j_in_Begin - sign*j, I+i); // copy val
+        Temp = T(j_in_Begin - sign*j, I+i); // copy val
+        V[uid](J+sign*j, I+i) = -nx*(uvel*nx+vvel*ny) - ny*(-uvel*ny + vvel*nx);
+        V[vid](J+sign*j, I+i) = -ny*(uvel*nx+vvel*ny) + nx*(-uvel*ny + vvel*nx);
+        V[pid](J+sign*j, I+i) = 2.0*V[pid](J+sign*j-sign*1, I+i) - V[pid](J+sign*j-sign*2, I+i);
+        T(J+sign*j, I+i) = Temp;
+        V[rhoid](J+sign*j, I+i) = V[pid](J+sign*j, I+i) / (R*T(J+sign*j, I+i));
+      }
+    }
+  }
+  else
+  {
+    cerr << "ERROR: Index Incorrect for SlipWall !!" << endl;
+    exit(1);
+
+  }
+}
+
+void outletBC(
+    // This function applies the oulet boundary condition for the 30 degree inlet see the 
+    // figure in setBC for the exact location
+    MatrixXd* V,           // output - Prim var    
+    int Begin[],           // input - Beginning index coord
+    int End[],             // input - Ending index coord 
+    constants C            // input - constants C
+    )
+{
+  int ni_g = V[rhoid].cols();
+  int nj_g = V[rhoid].rows();
+
+  int ni = ni_g - 2*C.num_ghost;
+  int nj = nj_g - 2*C.num_ghost;
+
+  int i_in_Begin = Begin[1] + C.num_ghost; // 1st interior i dir
+  int j_in_Begin = Begin[0] + C.num_ghost; // 1st interior j dir
+  int i_in_End = End[1] + C.num_ghost; // shifted by numghost
+  int j_in_End = End[0] + C.num_ghost;
+  int I, J;
+
+  for (int j = 0; j <= End[0]-Begin[0]; j++) 
+  {
+    for (int i = 0; i < C.num_ghost; i++)
+    {
+      I = i_in_Begin + 1;
+      J = j_in_Begin;
+      for (int eq = 0; eq < NEQ; eq++) // extrapolate from interior
+        V[eq](J+j, I+i) = 2.0*V[eq](J+j, I+i-1) - V[eq](J+j, I+i-2);
+    }
+  }
+}
+void inletBC(
+    // This function applies the inlet boundary condition for the 30 degree inlet with known
+    // beginning and ending index coordinates
+    MatrixXd* V,           // output - Prim var   
+    int Begin[],           // input - Beginning coord of boundary
+    int End[],             // input - Ending index coord of boundary
+    constants C            // input - constants for num ghost
+    )
+{
+  int ni_g = V[rhoid].cols();
+  int nj_g = V[rhoid].rows();
+
+  int ni = ni_g - 2*C.num_ghost;
+  int nj = nj_g - 2*C.num_ghost;
+
+  int i_in_Begin = Begin[1] + C.num_ghost; // 1st interior i dir
+  int j_in_Begin = Begin[0] + C.num_ghost; // 1st interior j dir
+  int i_in_End = End[1] + C.num_ghost; // shifted by numghost
+  int j_in_End = End[0] + C.num_ghost;
+
+  // Conditions defined in the problem statement
+  double M = 4.0;
+  double P0 = 12270.0; // Pa
+  double T0 = 217.0; // K
+  double rho0 = P0/(R*T0); // kg/m^3
+  double uvel0 = M*sqrt(GAMMA*R*T0); // m/s SEE diagram in setBC 
+  double vvel0 = 0.0;
+
+  // loop over for the ghost cells
+  int i_e, j_g;
+  for (int j = 0 ; j < C.num_ghost; j++)
+  {
+    for (int i = 0; i < End[1]-Begin[1]; i++)
+    {
+      i_e = i_in_Begin;
+      j_g = j_in_Begin + 1;
+      V[rhoid](j_g+j,i_e+i) = rho0; 
+      V[uid](j_g+j,i_e+i) = uvel0; 
+      V[vid](j_g+j,i_e+i) = vvel0; 
+      V[pid](j_g+j,i_e+i) = P0; 
+    }
+  }
+
+}
 
 void symmetricBC(
     // This function returns the primvar with updated ghost cells 
@@ -40,19 +231,20 @@ void symmetricBC(
 
   // This bc applies to the symm wall in figure in setBC func
   // It will extrapolate in the i dir while loop over the j coord
-  int i_g, j_e;
+  int I, J;
   for (int j = 0; j <= End[0]-Begin[0]; j++) // loop over j on edge
   {
     for (int i = 0; i < C.num_ghost; i++)
     {
-      i_g = i_in_Begin - 1; // index of ghost cell starting near to edge
-      j_e = j_in_Begin; // Start of the edge that inc by j
-      V[rhoid](j_e+j,i_g-i) = V[rhoid](j_e+j,i_g+i+1); // first int
-      V[uid](j_e+j,i_g-i) = V[uid](j_e+j,i_g+i+1); 
-      V[vid](j_e+j,i_g-i) = -V[vid](j_e+j,i_g+i+1); // bounce back
-      V[pid](j_e+j,i_g-i) = V[pid](j_e+j,i_g+i+1); 
+       I= i_in_Begin - 1; // index of ghost cell starting near to edge
+      J = j_in_Begin; // Start of the edge that inc by j
+      V[rhoid](J+j,I-i) = V[rhoid](J+j,I+i+1); // first int
+      V[uid](J+j,I-i) = V[uid](J+j,I+i+1); 
+      V[vid](J+j,I-i) =-V[vid](J+j,I+i+1); // bounce back
+      V[pid](J+j,I-i) = V[pid](J+j,I+i+1); 
     }
   }
+
 }
 
 void setBC(
@@ -62,11 +254,12 @@ void setBC(
     MatrixXd& n_i_yhat,    // input - norm vec i dir y comp
     MatrixXd& n_j_xhat,    // input - norm vec j dir x comp
     MatrixXd& n_j_yhat,    // input - norm vec j dir y comp
+    MatrixXd& T,           // input - grab the temperature for all the cell
     constants C            // input - constants C for case
     )
 {
-  int ni = V[rhoid].cols();
-  int nj = V[rhoid].rows();
+  int ni = V[rhoid].cols()-2*C.num_ghost;
+  int nj = V[rhoid].rows()-2*C.num_ghost;
 
   switch (C.f_case)
   {
@@ -106,19 +299,25 @@ void setBC(
         int Inlet_Begin[2] = {nj-1, 0};
         int Inlet_End[2] = {nj-1 , joint-1};
 
-        int Outlet_Begin[2] = {0, ni-1};
-        int Outlet_End[2] = {ni-1, nj-1};
+        int Outlet_Begin[2] = {0 , ni-1};
+        int Outlet_End[2] = {nj-1, ni-1};
 
         int Sym_Begin[2] = {0,0};
         int Sym_End[2] = {nj-1 , 0};
-     
 
+        symmetricBC(V, Sym_Begin, Sym_End, C);
+        inletBC(V,Inlet_Begin, Inlet_End, C);
+        outletBC(V, Outlet_Begin, Outlet_End, C);
+        slipwallBC(V, Upper_Begin, Upper_End, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
+        slipwallBC(V, Lower_Begin, Lower_End, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
+
+        break;
       }
     case 3:
       {
-      
-      
-      
+
+
+
       }
   }
 }
@@ -828,7 +1027,6 @@ void computeUpwindVLR(
   {
     for (int i = C.num_ghost-2 ; i <= ni+C.num_ghost; i++)
     {
-      //cout << i << endl;
       // Loop over all of the primvars
       for (int eq = 0; eq < NEQ; eq++)
       {
@@ -1257,7 +1455,6 @@ void extrapCopyCoords(
       yc_g(j,right+i) = 2.0*yc_g(j,right+i-1) - yc_g(j,right+i-2);
     }
   }
-  //cout << xc_g << endl;
   //set to 1 out the corners for sake of clarity.
   for (int i = 0; i < C.num_ghost; i++)
   {
@@ -1273,7 +1470,6 @@ void extrapCopyCoords(
       xc_g(top+j,i) = 1.0; yc_g(top+j,i) = 1.0;
     }
   }
-  //cout << xc_g << endl;
 }
 void computeVolume(
     // This function computes the volumes of the interior cell points. 
@@ -1329,7 +1525,6 @@ void computeNormalVectors(
       n_j_yhat(j,i) = (xn(j,i+1) - xn(j,i)) / Aj(j,i);
     }
   }
-  //cout << n_i_yhat << endl;
 }
 
 void computeArea(

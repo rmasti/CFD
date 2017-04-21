@@ -132,6 +132,8 @@ int main( int argc, char *argv[] )
     for (int eq = 0; eq < NEQ; eq++)
       S[eq] = MatrixXd::Constant(xc.rows(), xc.cols(), 0.0);
     // set BC STILL TO DO
+    setBC(V, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
+
   }
   primToCons(U, V, C);  U_RK = U;
   ////////////////// ENTER TIME INTEGRATION LOOP ////////////////
@@ -154,8 +156,59 @@ int main( int argc, char *argv[] )
     Iterhist.col(0) = computeL2(Error, C);
   }
 
+  ///////////////////// OUTPUT INITIAL ARRAYS ////////////////////////////
+  outputArray("Res1", Res[rhoid], 0);
+  outputArray("Res2", Res[rhouid], 0);
+  outputArray("Res3", Res[rhovid], 0);
+  outputArray("Res4", Res[rhoetid], 0);
+
+  outputArray("n_i_x", n_i_xhat, 0);
+  outputArray("n_i_y", n_i_yhat, 0);
+  outputArray("n_j_x", n_j_xhat, 0);
+  outputArray("n_j_y", n_j_yhat, 0);
+
+
+  outputArray("F1", F[frhouid], 0);
+  outputArray("F2", F[frhouuid], 0);
+  outputArray("F3", F[frhouvid], 0);
+  outputArray("F4", F[frhouhtid], 0);
+
+  outputArray("G1", G[grhovid], 0);
+  outputArray("G2", G[grhouvid], 0);
+  outputArray("G3", G[grhovvid], 0);
+  outputArray("G4", G[grhovhtid], 0);
+
+  outputArray("rho", V[rhoid], 0);
+  outputArray("u", V[uid], 0);
+  outputArray("v", V[vid], 0);
+  outputArray("p", V[pid], 0);
+
+  outputArray("rho_L", V_L[rhoid], 0);
+  outputArray("u_L", V_L[uid], 0);
+  outputArray("v_L", V_L[vid], 0);
+  outputArray("p_L", V_L[pid], 0);
+
+  outputArray("rho_R", V_R[rhoid], 0);
+  outputArray("u_R", V_R[uid], 0);
+  outputArray("v_R", V_R[vid], 0);
+  outputArray("p_R", V_R[pid], 0);
+
+  outputArray("rho_B", V_B[rhoid], 0);
+  outputArray("u_B", V_B[uid], 0);
+  outputArray("v_B", V_B[vid], 0);
+  outputArray("p_B", V_B[pid], 0);
+
+  outputArray("rho_T", V_T[rhoid], 0);
+  outputArray("u_T", V_T[uid], 0);
+  outputArray("v_T", V_T[vid], 0);
+  outputArray("p_T", V_T[pid], 0);
+
+
+
+
   /////////////// RUNGE KUTTA ITERATION ///////////////////////
 
+  cout << "Entering Main Time Loop...." << endl;
   for ( int n = 0; n < C.nmax; n++) 
   {
     for (int k = 0; k < C.rk_order; k++)
@@ -166,6 +219,7 @@ int main( int argc, char *argv[] )
       computeTemperature(T, V); // grab temp for B.C.'s
       if (C.f_case != 1) {
         ////// NEED TO DO BC'S
+        setBC(V, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
       }
       MUSCL(V_L,V_R,V_B,V_T,V,C); // MATCHES for case 1
       compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C);
@@ -188,9 +242,23 @@ int main( int argc, char *argv[] )
 
 
     L2hist.col(n+1) = computeL2(Res, C);
+    cout << L2hist(0,n+1)/L2hist(0,0) << endl;
     // Check for convergence
     if ( L2hist(0,n+1)/L2hist(0,0) < C.tol )
+    {
+      outputArray("rho", V[rhoid], n);
+      outputArray("u", V[uid], n);
+      outputArray("v", V[vid], n);
+      outputArray("p", V[pid], n);
       break;
+
+    }
+    if (std::isnan(L2hist(0,n+1)/L2hist(0,0)))
+    {
+      cerr << "NAN: 404 abort" << endl;
+      exit(1);
+
+    }
   }
 
 
