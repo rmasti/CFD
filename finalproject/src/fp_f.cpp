@@ -9,6 +9,203 @@
 #include "fp.hpp" //structure templates and func prototypes and libs
 
 
+void periodicBC(
+    // This function will apply a periodic BC knowing a and b boundaries
+    MatrixXd* V,           // output - Prim Var   
+    int BeginA[],          // input - A boundary begin index coord
+    int EndA[],            // input - A boundary end index coord
+    int BeginB[],          // input - B boundary begin index coord
+    int EndB[],            // input - B boundary end index coord
+    constants C            // input - constants for num_ghost
+    )
+{
+  int ni_g = V[rhoid].cols();
+  int nj_g = V[rhoid].rows();
+
+  int ni = ni_g - 2*C.num_ghost;
+  int nj = nj_g - 2*C.num_ghost;
+
+  int i_in_BeginA = BeginA[1] + C.num_ghost; // 1st interior i dir
+  int j_in_BeginA = BeginA[0] + C.num_ghost; // 1st interior j dir
+
+  int i_in_EndA = EndA[1] + C.num_ghost; // shifted by numghost
+  int j_in_EndA = EndA[0] + C.num_ghost;
+
+  int i_in_BeginB = BeginB[1] + C.num_ghost; // 1st interior i dir
+  int j_in_BeginB = BeginB[0] + C.num_ghost; // 1st interior j dir
+
+  int i_in_EndB = EndB[1] + C.num_ghost; // shifted by numghost
+  int j_in_EndB = EndB[0] + C.num_ghost;
+
+  int IA, JA, IB, JB;
+  int sign;
+  int B_dir;
+  int L;
+
+  if (i_in_BeginA == i_in_EndA) // col periodic boundary
+  {
+    if (i_in_BeginA == C.num_ghost) // left
+      sign = -1; // point left
+    if (i_in_BeginA == ni+C.num_ghost-1)
+      sign = 1;// point right
+    else
+    {
+      cerr << "ERROR: Periodic BC Index Chosen Incorrectly!!" << endl;
+      exit(1);
+    }
+  }
+  else if (j_in_BeginA == j_in_EndA) // row periodic boundary
+  {
+    L = abs(i_in_BeginA - i_in_EndA) + 1;
+
+    if (j_in_BeginA == C.num_ghost) // bot
+      sign = -1; // down
+    else if (j_in_BeginA = nj + C.num_ghost - 1)
+      sign = 1; // up
+    else
+    {
+      cerr << "ERROR: Periodic BC Index Chosen Incorrectly!!" << endl;
+      exit(1);
+    }
+    if (i_in_EndB > i_in_BeginB)
+      B_dir = 1;
+    else if (i_in_EndB < i_in_BeginB)
+      B_dir = -1;
+    else
+    {
+      cerr << "ERROR: Periodic BC Index Begin != End!!" << endl;
+      exit(1);
+    }
+    for (int j = 0; j < C.num_ghost; j++)
+    {
+      for (int i = 0; i < L; i++)
+      {
+        IA = i_in_BeginA;
+        IB = i_in_BeginB;
+
+        JA = j_in_BeginA + sign*1;
+        JB = j_in_BeginB + sign*1;
+
+        for (int eq = 0; eq < NEQ; eq++)
+        {
+          V[eq](JA+sign*j,IA+i) = V[eq](j_in_BeginB-sign*j,IB+B_dir*i);
+          V[eq](JB+sign*j, IB+B_dir*i) = V[eq](j_in_BeginA-sign*j,IA+i);
+        }
+      }
+    }
+  }
+}
+
+
+void farfieldBC(
+    // This function applies the farfield boundary condition for 
+    // the naca airfoil 
+    MatrixXd* V,           // output - Prim Var  
+    int Begin[],           // input - index coord for BC beginning
+    int End[],             // input - index coord for BC ending
+    constants C            // constants for num_ghost
+    )
+{
+  int ni_g = V[rhoid].cols();
+  int nj_g = V[rhoid].rows();
+
+  int ni = ni_g - 2*C.num_ghost;
+  int nj = nj_g - 2*C.num_ghost;
+
+  int i_in_Begin = Begin[1] + C.num_ghost; // 1st interior i dir
+  int j_in_Begin = Begin[0] + C.num_ghost; // 1st interior j dir
+
+  int i_in_End = End[1] + C.num_ghost; // shifted by numghost
+  int j_in_End = End[0] + C.num_ghost;
+
+  int I, J;
+  int sign;
+
+  double M, rho0, uvel0, vvel0, P0, T0, AOA;
+
+
+  if (C.f_AOA == 1)
+  {
+    M = 0.84;
+    P0 = 65855.8; // Pa
+    T0 = 300; // K
+    AOA = 0; // deg
+
+  }
+  else if (C.f_AOA == 2)
+  {
+    M = 0.75;
+    P0 = 67243.5; // Pa
+    T0 = 300; // K
+    AOA = 8.0; // deg
+  }
+  else
+  {
+    cerr << "ERROR: f_AOA Chosen Incorrectly!!" << endl;
+    exit(1);
+  }
+
+  rho0 = P0/(R*T0);
+  uvel0 = M*sqrt(GAMMA*R*T0)*cos(AOA*PI/180.0);
+  uvel0 = M*sqrt(GAMMA*R*T0)*sin(AOA*PI/180.0);
+
+  // detect for direction of ghostcells
+  if (i_in_Begin == i_in_End) // ghost in the j dir
+  {
+    if (i_in_Begin == C.num_ghost) // at left
+      sign = -1; // outward normal points left
+    else if (i_in_Begin == ni+C.num_ghost-1) // right
+      sign = 1; // outward normal points right
+    else
+    {
+      cerr << "ERROR: BC Index Not Chosen Correctly!!" << endl;
+      exit(1);
+    }
+
+    for (int j = 0; j <= End[0]-Begin[0]; j++) // row wall
+    {
+      for (int i = 0; i < C.num_ghost; i++) // column ghost
+      {
+        I = i_in_Begin + sign*1;
+        J = j_in_Begin;
+
+        V[rhoid](J+j, I+sign*i) = rho0;
+        V[uid](J+j, I+sign*i) = uvel0;
+        V[vid](J+j, I+sign*i) = vvel0;
+        V[pid](J+j, I+sign*i) = P0;
+      }
+    }
+  }
+  else if (j_in_Begin == j_in_End) // now ghost in i dir
+  {
+    if (j_in_Begin == C.num_ghost) // bottom
+      sign = -1;// point down
+    if (j_in_Begin == nj + C.num_ghost - 1)
+      sign = 1; // point upd
+    else
+    {
+      cerr << "ERROR: BC Index Not Chosen Correctly!!" << endl;
+      exit(1);
+    }
+    for (int j = 0; j < C.num_ghost; j++) // ghost in j
+    {
+      for (int i = 0; i < End[1]-Begin[1]; i++) // loop over col in row
+      {
+        I = i_in_Begin;
+        j = j_in_Begin + sign*1;
+        V[rhoid](J+sign*j, I+i) = rho0;
+        V[uid](J+sign*j, I+i) = uvel0;
+        V[vid](J+sign*j, I+i) = vvel0;
+        V[pid](J+sign*j, I+i) = P0;
+      }
+    }
+  }
+  else
+  {
+    cerr << "ERROR: BC Index Not Chosen Correctly!!" << endl;
+    exit(1);
+  }
+}
 
 void slipwallBC(
     // This function will allow the normal velocity from the boundary to reflect but simultan
@@ -40,7 +237,7 @@ void slipwallBC(
   double nx, ny, uvel, vvel;
   double Temp;
 
-  if (i_in_Begin = i_in_End) // Then we are along a vertical boundary loop over j
+  if (i_in_Begin == i_in_End) // Then we are along a vertical boundary loop over j
   {
     if (i_in_Begin == C.num_ghost) // detect whether the ghost cells are on the left (i=3)
     {
@@ -54,7 +251,7 @@ void slipwallBC(
     }
     else
     {
-      cerr << "ERROR: Not Applying the Correct SlipWall BC's !!" << endl;
+      cerr << "ERROR: Not Applying the Correct SlipWall BC's col!!" << endl;
       exit(1);
     }
 
@@ -96,7 +293,7 @@ void slipwallBC(
     }
     else
     {
-      cerr << "ERROR: Not Applying the Correct SlipWall BC's !!" << endl;
+      cerr << "ERROR: Not Applying the Correct SlipWall BC's row!!" << endl;
       exit(1);
     }
     for (int j = 0 ; j < C.num_ghost; j++)
@@ -236,7 +433,7 @@ void symmetricBC(
   {
     for (int i = 0; i < C.num_ghost; i++)
     {
-       I= i_in_Begin - 1; // index of ghost cell starting near to edge
+      I= i_in_Begin - 1; // index of ghost cell starting near to edge
       J = j_in_Begin; // Start of the edge that inc by j
       V[rhoid](J+j,I-i) = V[rhoid](J+j,I+i+1); // first int
       V[uid](J+j,I-i) = V[uid](J+j,I+i+1); 
@@ -244,12 +441,11 @@ void symmetricBC(
       V[pid](J+j,I-i) = V[pid](J+j,I+i+1); 
     }
   }
-
 }
 
 void setBC(
     // Apply BC for cases 2 and 3, God Help Me
-    MatrixXd* V,           // output - prim var  
+    MatrixXd* V,           // output - prim var
     MatrixXd& n_i_xhat,    // input - norm vec i dir x comp
     MatrixXd& n_i_yhat,    // input - norm vec i dir y comp
     MatrixXd& n_j_xhat,    // input - norm vec j dir x comp
@@ -260,7 +456,6 @@ void setBC(
 {
   int ni = V[rhoid].cols()-2*C.num_ghost;
   int nj = V[rhoid].rows()-2*C.num_ghost;
-
   switch (C.f_case)
   {
     case 1: // curvilinear MMS BC
@@ -274,8 +469,6 @@ void setBC(
         int joint;
         // plotting the grid this is the joint of the upper bend
         joint = 10*pow(2, C.f_mesh); 
-
-
 
         // MESH STRUCTURE
         //    joint                      Outlet End  
@@ -316,8 +509,52 @@ void setBC(
     case 3:
       {
 
+        //  NACA             airfoil
+        //Farfield1   FarField2--------------------------------
+        //|            |                                      |
+        //V            V                                      |
+        //************************************************    |
+        //************************************************    |
+        //********************                ************<---|
+        //********<-AirfoilStart/End:Periodic     ********    |
+        //********************<-Slipwall      ************    |
+        //************************************************    |
+        //************************************************    |
+        //A             A                                     |
+        //|             |                                     |
+        //Farfield3     |-------------------------------------|
 
 
+        int i_Airfoil_Begin = 4*pow(2,C.f_mesh);
+        int i_Airfoil_End = 20*pow(2, C.f_mesh) - 1;
+
+        // see figure above
+        int Farfield1_Begin[2] = {0,0};
+        int Farfield1_End[2] = {nj-1, 0};
+
+        int Farfield2_Begin[2] = {nj-1,0}; // same as 1
+        int Farfield2_End[2] = {nj-1, ni-1};
+
+        int Farfield3_Begin[2] = {0, ni-1};
+        int Farfield3_End[2] = {nj-1, ni-1}; // same as 2
+
+        int Periodic_A_Begin[2] = {0, 0}; 
+        int Periodic_A_End[2] = {0, i_Airfoil_Begin-1}; 
+
+        int Periodic_B_Begin[2] = {0, i_Airfoil_End+1}; 
+        int Periodic_B_End[2] = {0, ni-1}; 
+
+        int Airfoil_Begin[2] = {0, i_Airfoil_Begin};
+        int Airfoil_End[2] = {0, i_Airfoil_End};
+
+
+        farfieldBC(V, Farfield1_Begin, Farfield1_End, C);
+        farfieldBC(V, Farfield2_Begin, Farfield2_End, C);
+        farfieldBC(V, Farfield3_Begin, Farfield3_End, C);
+
+        slipwallBC(V, Airfoil_Begin, Airfoil_End, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
+        periodicBC(V, Periodic_A_Begin, Periodic_A_End, Periodic_B_Begin, Periodic_B_End, C);
+        break;
       }
   }
 }
@@ -939,28 +1176,29 @@ void computeUpwindVBT(
   MatrixXd* Psi_Neg = new MatrixXd[NEQ];
   for (int eq = 0; eq < NEQ; eq++)
   {
-    Psi_Pos[eq].resize(nj_g+1,ni_g);// interfaces in j
-    Psi_Neg[eq].resize(nj_g+1,ni_g);
+    Psi_Pos[eq].resize(nj_g+1,ni);// interfaces in j
+    Psi_Neg[eq].resize(nj_g+1,ni);
   }
 
   // Calculate Psi's  then update top and bottom
-
   double delta = 1.0e-6;
-  for (int i = 0; i < ni_g; i++)
+  int i_cells;
+  for (int i = 0; i < Psi_Pos[rhoid].cols(); i++)
   {
     for (int j = C.num_ghost-2 ; j <= nj+C.num_ghost; j++)
     { 
       // Loop over all of the primvars
       for (int eq = 0; eq < NEQ; eq++)
       {
+        i_cells = i + C.num_ghost;
         // NOW SWEEPING IN THE i direction
         // Calculate the denom which is the same for pos and neg
-        double denom = V[eq](j+1,i) - V[eq](j,i);
+        double denom = V[eq](j+1,i_cells) - V[eq](j,i_cells);
         // Ensure not division by 0
         denom = SIGN( mymax(abs(denom), delta), denom);
         // Calculate the slopes (r) for both pos and neg dir
-        double r_p = (V[eq](j+2,i) - V[eq](j+1, i))/denom;
-        double r_n = (V[eq](j,i) - V[eq](j-1, i))/denom;
+        double r_p = (V[eq](j+2,i_cells) - V[eq](j+1, i_cells))/denom;
+        double r_n = (V[eq](j,i_cells) - V[eq](j-1, i_cells))/denom;
         // Apply Limiters
         double psi_p, psi_n; // used in the apply limiter func
         applyLimiter(psi_p, psi_n, r_p, r_n, C);
@@ -982,15 +1220,15 @@ void computeUpwindVBT(
         // Note i_cells + 1 is the index for the i+1/2 value of psi
         // Left state at the interface
         V_B[eq](j,i) = V[eq](j_cells,i_cells) + 
-          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Pos[eq](j_int-1,i_cells)*
+          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Pos[eq](j_int-1,i)*
               (V[eq](j_cells,i_cells)-V[eq](j_cells-1,i_cells)) + 
-              (1.0+C.f_kap)*Psi_Neg[eq](j_int,i_cells)*
+              (1.0+C.f_kap)*Psi_Neg[eq](j_int,i)*
               (V[eq](j_cells+1,i_cells)-V[eq](j_cells,i_cells)));
         // Right state at the interface
         V_T[eq](j,i) = V[eq](j_cells+1,i_cells) - 
-          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Neg[eq](j_int+1,i_cells)*
+          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Neg[eq](j_int+1,i)*
               (V[eq](j_cells+2,i_cells)-V[eq](j_cells+1,i_cells)) 
-              + (1.0+C.f_kap)*Psi_Pos[eq](j_int,i_cells)*
+              + (1.0+C.f_kap)*Psi_Pos[eq](j_int,i)*
               (V[eq](j_cells+1,i_cells)-V[eq](j_cells,i_cells)));
       }  
     }
@@ -1016,27 +1254,29 @@ void computeUpwindVLR(
   MatrixXd* Psi_Neg = new MatrixXd[NEQ];
   for (int eq = 0; eq < NEQ; eq++)
   {
-    Psi_Pos[eq].resize(nj_g,ni_g+1);
-    Psi_Neg[eq].resize(nj_g,ni_g+1);
+    Psi_Pos[eq].resize(nj,ni_g+1);
+    Psi_Neg[eq].resize(nj,ni_g+1);
   }
 
 
   // Calculate the Psi_Pos and Psi_Neg then update
   double delta = 1.0e-6; // avoid div by zero
-  for (int j = 0; j < nj_g; j++)
+  int j_cells; 
+  for (int j = 0; j < Psi_Pos[rhoid].rows(); j++)
   {
     for (int i = C.num_ghost-2 ; i <= ni+C.num_ghost; i++)
     {
       // Loop over all of the primvars
       for (int eq = 0; eq < NEQ; eq++)
       {
+        j_cells = C.num_ghost+j;
         // Calculate the denom which is the same for pos and neg
-        double denom = V[eq](j,i+1) - V[eq](j,i);
+        double denom = V[eq](j_cells,i+1) - V[eq](j_cells,i);
         // Ensure not division by 0
         denom = SIGN( mymax(abs(denom), delta), denom);
         // Calculate the slopes (r) for both pos and neg dir
-        double r_p = (V[eq](j,i+2) - V[eq](j, i+1))/denom;
-        double r_n = (V[eq](j,i) - V[eq](j, i-1))/denom;
+        double r_p = (V[eq](j_cells,i+2) - V[eq](j_cells, i+1))/denom;
+        double r_n = (V[eq](j_cells,i) - V[eq](j_cells, i-1))/denom;
         // Apply Limiters
         double psi_p, psi_n;
         applyLimiter(psi_p, psi_n, r_p, r_n, C);
@@ -1047,27 +1287,29 @@ void computeUpwindVLR(
   }
 
   // Fill in the Left and right state values
-  for (int i = 0; i < V_L[rhoid].cols(); i++)
+  for (int j = 0; j < V_L[rhoid].rows(); j++)
   {
-    for (int j = 0; j < V_L[rhoid].rows(); j++)
+
+    for (int i = 0; i < V_L[rhoid].cols(); i++)
     {
       int i_int = C.num_ghost + i; // loop over i interfaces 
       int i_cells = (C.num_ghost - 1) + i; // loop over j interfaces
       int j_cells = C.num_ghost+j;
+
       for (int eq = 0 ; eq < NEQ; eq++)
       {
         // Note i_cells + 1 is the index for the i+1/2 value of psi
         // Left state at the interface
         V_L[eq](j,i) = V[eq](j_cells,i_cells) + 
-          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Pos[eq](j_cells,i_int-1)*
+          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Pos[eq](j,i_int-1)*
               (V[eq](j_cells,i_cells)-V[eq](j_cells,i_cells-1)) + 
-              (1.0+C.f_kap)*Psi_Neg[eq](j_cells,i_int)*
+              (1.0+C.f_kap)*Psi_Neg[eq](j,i_int)*
               (V[eq](j_cells,i_cells+1)-V[eq](j_cells,i_cells)));
         // Right state at the interface
         V_R[eq](j,i) = V[eq](j_cells,i_cells+1) - 
-          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Neg[eq](j_cells,i_int+1)*
+          0.25*C.f_eps*((1.0-C.f_kap)*Psi_Neg[eq](j,i_int+1)*
               (V[eq](j_cells,i_cells+2)-V[eq](j_cells,i_cells+1)) 
-              + (1.0+C.f_kap)*Psi_Pos[eq](j_cells,i_int)*
+              + (1.0+C.f_kap)*Psi_Pos[eq](j,i_int)*
               (V[eq](j_cells,i_cells+1)-V[eq](j_cells,i_cells)));
       }  
     }
@@ -1284,6 +1526,7 @@ void solveSourceMMS(
 
 void outputArray(
     // This function will output any eigen matrix into a file
+    string Address,        // input - folder location
     string FileName,       // input - File
     MatrixXd& out,         //input - matrix
     int n                  //input - iteration
@@ -1292,10 +1535,9 @@ void outputArray(
   ostringstream StrConvert;
   StrConvert << n; // import n as an ostringstream
   string num_iter = StrConvert.str();// convert to string
-  string Address = "./debug/";// add together
   string Suffix = ".txt";
-  string Sub = "_";
-  Address = Address + FileName + Sub + num_iter + Suffix; // can combine string
+  string Sub = "-";
+  Address = Address + "/" + FileName + Sub + num_iter + Suffix; // can combine string
   ofstream outfile; // output
   outfile.open(Address.c_str()); // access string component
 

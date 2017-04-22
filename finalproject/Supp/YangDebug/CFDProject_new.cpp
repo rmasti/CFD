@@ -1879,6 +1879,11 @@ void Calc_upwind_Prm_i(int num_ghost, double upwind_eps, double upwind_kappa, ve
 	    break;
 	  } 
 	}
+	    phi1_pos = 1.0;
+	    phi2_pos = 1.0;
+	    phi2_neg = 1.0;
+	    phi3_neg = 1.0;
+	
 	  prm_Left[i][j] = prm_tomb[i_tomb-1][j_tomb] + 0.25*upwind_eps*((1-upwind_kappa) * phi1_pos *
 	                   (prm_tomb[i_tomb-1][j_tomb]-prm_tomb[i_tomb-2][j_tomb]) +
 		           (1+upwind_kappa) * phi2_neg * (prm_tomb[i_tomb][j_tomb]-prm_tomb[i_tomb-1][j_tomb]));
@@ -1886,7 +1891,9 @@ void Calc_upwind_Prm_i(int num_ghost, double upwind_eps, double upwind_kappa, ve
 	  prm_Right[i][j] = prm_tomb[i_tomb][j_tomb] - 0.25*upwind_eps*((1+upwind_kappa) * phi2_pos *
 			    (prm_tomb[i_tomb][j_tomb]-prm_tomb[i_tomb-1][j_tomb]) + (1-upwind_kappa) * phi3_neg *
 			    (prm_tomb[i_tomb+1][j_tomb]-prm_tomb[i_tomb][j_tomb]));
-      
+
+
+
     }
   }
 }
@@ -1957,7 +1964,11 @@ void Calc_upwind_Prm_j(int num_ghost, double upwind_eps, double upwind_kappa, ve
 	      phi3_neg = (r3_neg + r3_neg*r3_neg) / (1 + r3_neg*r3_neg);
 	  }
 	}
-      
+   	phi1_pos = 1.0;
+	phi2_pos = 1.0;
+	phi2_neg = 1.0;
+	phi3_neg = 1.0;
+	   
       prm_Lower[i][j] = prm_tomb[i_tomb][j_tomb-1] + 0.25*upwind_eps*((1-upwind_kappa) * phi1_pos *
 		        (prm_tomb[i_tomb][j_tomb-1]-prm_tomb[i_tomb][j_tomb-2]) + (1+upwind_kappa) *
 		        phi2_neg * (prm_tomb[i_tomb][j_tomb]-prm_tomb[i_tomb][j_tomb-1]));

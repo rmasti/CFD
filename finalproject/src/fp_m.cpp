@@ -15,8 +15,8 @@ int main( int argc, char *argv[] )
 
   // Now with the constants inputted create the output folder for cleanliness sake
 
-  string Ouput_Folder = buildCaseFolder(C); // return the name of the folder it created for writing to
-
+  string Output_Folder = buildCaseFolder(C); // return the name of the folder it created for writing to
+  Output_Folder = "./output/" + Output_Folder;
   /////////////////////////////////////////////////////////////
   ////////////////////// READ THE MESH ////////////////////////
   /////////////////////////////////////////////////////////////
@@ -119,12 +119,12 @@ int main( int argc, char *argv[] )
   initialize(V, xc_g, yc_g, C);
   //______SET BOUNDARY CONDITIONS/SOURCES______//
   computeTemperature(T, V);
+
   if (C.f_case == 1) // MMS Curvilinear mesh
   {
     solveSourceMMS(S,xc,yc, C);
     solveSolutionMMS(V_MMS, xc_g, yc_g, C); // solution at cell w/ g
     setBCMMS(V, V_MMS, C);
-
   }
   else // case 2 and 3 BC enforce and Source Determ
   {
@@ -137,8 +137,8 @@ int main( int argc, char *argv[] )
   }
   primToCons(U, V, C);  U_RK = U;
   ////////////////// ENTER TIME INTEGRATION LOOP ////////////////
-
   MUSCL(V_L,V_R,V_B,V_T,V,C); // MATCHES for case 1
+
   compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C);
 
   computeRes(Res, F, G, S, Ai, Aj, Volume, C);
@@ -157,59 +157,56 @@ int main( int argc, char *argv[] )
   }
 
   ///////////////////// OUTPUT INITIAL ARRAYS ////////////////////////////
-  outputArray("Res1", Res[rhoid], 0);
-  outputArray("Res2", Res[rhouid], 0);
-  outputArray("Res3", Res[rhovid], 0);
-  outputArray("Res4", Res[rhoetid], 0);
+  outputArray(Output_Folder, "rho", V[rhoid], 0);
+  outputArray(Output_Folder, "u", V[uid], 0);
+  outputArray(Output_Folder, "v", V[vid], 0);
+  outputArray(Output_Folder, "p", V[pid], 0);
 
-  outputArray("n_i_x", n_i_xhat, 0);
-  outputArray("n_i_y", n_i_yhat, 0);
-  outputArray("n_j_x", n_j_xhat, 0);
-  outputArray("n_j_y", n_j_yhat, 0);
+  outputArray(Output_Folder, "Res1", Res[rhoid], 0);
+  outputArray(Output_Folder, "Res2", Res[rhouid], 0);
+  outputArray(Output_Folder, "Res3", Res[rhovid], 0);
+  outputArray(Output_Folder, "Res4", Res[rhoetid], 0);
 
-
-  outputArray("F1", F[frhouid], 0);
-  outputArray("F2", F[frhouuid], 0);
-  outputArray("F3", F[frhouvid], 0);
-  outputArray("F4", F[frhouhtid], 0);
-
-  outputArray("G1", G[grhovid], 0);
-  outputArray("G2", G[grhouvid], 0);
-  outputArray("G3", G[grhovvid], 0);
-  outputArray("G4", G[grhovhtid], 0);
-
-  outputArray("rho", V[rhoid], 0);
-  outputArray("u", V[uid], 0);
-  outputArray("v", V[vid], 0);
-  outputArray("p", V[pid], 0);
-
-  outputArray("rho_L", V_L[rhoid], 0);
-  outputArray("u_L", V_L[uid], 0);
-  outputArray("v_L", V_L[vid], 0);
-  outputArray("p_L", V_L[pid], 0);
-
-  outputArray("rho_R", V_R[rhoid], 0);
-  outputArray("u_R", V_R[uid], 0);
-  outputArray("v_R", V_R[vid], 0);
-  outputArray("p_R", V_R[pid], 0);
-
-  outputArray("rho_B", V_B[rhoid], 0);
-  outputArray("u_B", V_B[uid], 0);
-  outputArray("v_B", V_B[vid], 0);
-  outputArray("p_B", V_B[pid], 0);
-
-  outputArray("rho_T", V_T[rhoid], 0);
-  outputArray("u_T", V_T[uid], 0);
-  outputArray("v_T", V_T[vid], 0);
-  outputArray("p_T", V_T[pid], 0);
+  outputArray(Output_Folder, "n_i_x", n_i_xhat, 0);
+  outputArray(Output_Folder, "n_i_y", n_i_yhat, 0);
+  outputArray(Output_Folder, "n_j_x", n_j_xhat, 0);
+  outputArray(Output_Folder, "n_j_y", n_j_yhat, 0);
 
 
+  outputArray(Output_Folder, "F1", F[frhouid], 0);
+  outputArray(Output_Folder, "F2", F[frhouuid], 0);
+  outputArray(Output_Folder, "F3", F[frhouvid], 0);
+  outputArray(Output_Folder, "F4", F[frhouhtid], 0);
 
+  outputArray(Output_Folder, "G1", G[grhovid], 0);
+  outputArray(Output_Folder, "G2", G[grhouvid], 0);
+  outputArray(Output_Folder, "G3", G[grhovvid], 0);
+  outputArray(Output_Folder, "G4", G[grhovhtid], 0);
+
+  outputArray(Output_Folder, "rho_L", V_L[rhoid], 0);
+  outputArray(Output_Folder, "u_L", V_L[uid], 0);
+  outputArray(Output_Folder, "v_L", V_L[vid], 0);
+  outputArray(Output_Folder, "p_L", V_L[pid], 0);
+
+  outputArray(Output_Folder, "rho_R", V_R[rhoid], 0);
+  outputArray(Output_Folder, "u_R", V_R[uid], 0);
+  outputArray(Output_Folder, "v_R", V_R[vid], 0);
+  outputArray(Output_Folder, "p_R", V_R[pid], 0);
+
+  outputArray(Output_Folder, "rho_B", V_B[rhoid], 0);
+  outputArray(Output_Folder, "u_B", V_B[uid], 0);
+  outputArray(Output_Folder, "v_B", V_B[vid], 0);
+  outputArray(Output_Folder, "p_B", V_B[pid], 0);
+
+  outputArray(Output_Folder, "rho_T", V_T[rhoid], 0);
+  outputArray(Output_Folder, "u_T", V_T[uid], 0);
+  outputArray(Output_Folder, "v_T", V_T[vid], 0);
+  outputArray(Output_Folder, "p_T", V_T[pid], 0);
 
   /////////////// RUNGE KUTTA ITERATION ///////////////////////
 
   cout << "Entering Main Time Loop...." << endl;
-  for ( int n = 0; n < C.nmax; n++) 
+  for ( int n = 1; n < C.nmax; n++) 
   {
     for (int k = 0; k < C.rk_order; k++)
     {
@@ -229,27 +226,49 @@ int main( int argc, char *argv[] )
     computeMaxSpeed(MaxSpeed, V, C);
     // compute timestep
     computeTimeStep(dt, Volume, Ai, Aj, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, MaxSpeed, V, C);
-    U = U_RK;
+
+    U = U_RK; // update RK
 
     //cout << L2hist(3,n+1)/L2hist(3,0) << " " << Iterhist(0,n) << endl;
+    L2hist.col(n+1) = computeL2(Res, C);
     if (C.f_case == 1) // compute error
     {
       computeError(Error, V, V_MMS, C);
       Iterhist.col(n+1) = computeL2(Error, C);
     }
-    if ( n == 100 )
-      C.f_limiter = 0;
 
-
-    L2hist.col(n+1) = computeL2(Res, C);
-    cout << L2hist(0,n+1)/L2hist(0,0) << endl;
-    // Check for convergence
-    if ( L2hist(0,n+1)/L2hist(0,0) < C.tol )
+    if ( n % C.pint == 0)
     {
-      outputArray("rho", V[rhoid], n);
-      outputArray("u", V[uid], n);
-      outputArray("v", V[vid], n);
-      outputArray("p", V[pid], n);
+      cout << 
+        "rho: " << L2hist(rhoid,n+1)/L2hist(rhoid,0) << 
+        " u: " << L2hist(uid,n+1)/L2hist(uid,0) << 
+        " v: " << L2hist(vid,n+1)/L2hist(vid,0) <<  
+        " p: " << L2hist(pid,n+1)/L2hist(pid,0) << endl;
+    }
+
+    if ( n % C.wint == 0)
+    {
+      outputArray(Output_Folder, "rho", V[rhoid], n);
+      outputArray(Output_Folder, "u", V[uid], n);
+      outputArray(Output_Folder, "v", V[vid], n);
+      outputArray(Output_Folder, "p", V[pid], n);
+    }
+
+    // Check for convergence
+    if ( L2hist(rhoid,n+1)/L2hist(rhoid,0) < C.tol && L2hist(uid,n+1)/L2hist(uid,0) < C.tol &&  L2hist(vid,n+1)/L2hist(vid,0) < C.tol && L2hist(pid,n+1)/L2hist(pid,0) < C.tol )
+    {
+      outputArray(Output_Folder, "rho", V[rhoid], n);
+      outputArray(Output_Folder, "u", V[uid], n);
+      outputArray(Output_Folder, "v", V[vid], n);
+      outputArray(Output_Folder, "p", V[pid], n);
+
+
+      // Resize history to correct size
+      L2hist.conservativeResize(NEQ,n);
+      Iterhist.conservativeResize(NEQ,n);
+
+      outputArray(Output_Folder, "IterErrHist", Iterhist, n);
+      outputArray(Output_Folder, "L2Hist", L2hist, n);
       break;
 
     }
@@ -257,7 +276,6 @@ int main( int argc, char *argv[] )
     {
       cerr << "NAN: 404 abort" << endl;
       exit(1);
-
     }
   }
 
@@ -265,64 +283,66 @@ int main( int argc, char *argv[] )
   if (DEBUG)
   {
     /////////////////// OUTPUT ARRAYS ///////////////////////////
-    outputArray("dt", dt, 0);
-    outputArray("MaxSpeed", MaxSpeed, 0);
+    /*
+       outputArray(Output_Folder, "dt", dt, 0);
+       outputArray(Output_Folder, "MaxSpeed", MaxSpeed, 0);
 
-    outputArray("Res1", Res[rhoid], 0);
-    outputArray("Res2", Res[rhouid], 0);
-    outputArray("Res3", Res[rhovid], 0);
-    outputArray("Res4", Res[rhoetid], 0);
+       outputArray(Output_Folder, "Res1", Res[rhoid], 0);
+       outputArray(Output_Folder, "Res2", Res[rhouid], 0);
+       outputArray(Output_Folder, "Res3", Res[rhovid], 0);
+       outputArray(Output_Folder, "Res4", Res[rhoetid], 0);
 
-    outputArray("n_i_x", n_i_xhat, 0);
-    outputArray("n_i_y", n_i_yhat, 0);
-    outputArray("n_j_x", n_j_xhat, 0);
-    outputArray("n_j_y", n_j_yhat, 0);
+       outputArray(Output_Folder, "n_i_x", n_i_xhat, 0);
+       outputArray(Output_Folder, "n_i_y", n_i_yhat, 0);
+       outputArray(Output_Folder, "n_j_x", n_j_xhat, 0);
+       outputArray(Output_Folder, "n_j_y", n_j_yhat, 0);
 
 
-    outputArray("F1", F[frhouid], 0);
-    outputArray("F2", F[frhouuid], 0);
-    outputArray("F3", F[frhouvid], 0);
-    outputArray("F4", F[frhouhtid], 0);
+       outputArray(Output_Folder, "F1", F[frhouid], 0);
+       outputArray(Output_Folder, "F2", F[frhouuid], 0);
+       outputArray(Output_Folder, "F3", F[frhouvid], 0);
+       outputArray(Output_Folder, "F4", F[frhouhtid], 0);
 
-    outputArray("G1", G[grhovid], 0);
-    outputArray("G2", G[grhouvid], 0);
-    outputArray("G3", G[grhovvid], 0);
-    outputArray("G4", G[grhovhtid], 0);
+       outputArray(Output_Folder, "G1", G[grhovid], 0);
+       outputArray(Output_Folder, "G2", G[grhouvid], 0);
+       outputArray(Output_Folder, "G3", G[grhovvid], 0);
+       outputArray(Output_Folder, "G4", G[grhovhtid], 0);
 
-    outputArray("rho", V[rhoid], 0);
-    outputArray("u", V[uid], 0);
-    outputArray("v", V[vid], 0);
-    outputArray("p", V[pid], 0);
+       outputArray(Output_Folder, "rho", V[rhoid], 0);
+       outputArray(Output_Folder, "u", V[uid], 0);
+       outputArray(Output_Folder, "v", V[vid], 0);
+       outputArray(Output_Folder, "p", V[pid], 0);
 
-    outputArray("rho_L", V_L[rhoid], 0);
-    outputArray("u_L", V_L[uid], 0);
-    outputArray("v_L", V_L[vid], 0);
-    outputArray("p_L", V_L[pid], 0);
+       outputArray(Output_Folder, "rho_L", V_L[rhoid], 0);
+       outputArray(Output_Folder, "u_L", V_L[uid], 0);
+       outputArray(Output_Folder, "v_L", V_L[vid], 0);
+       outputArray(Output_Folder, "p_L", V_L[pid], 0);
 
-    outputArray("rho_R", V_R[rhoid], 0);
-    outputArray("u_R", V_R[uid], 0);
-    outputArray("v_R", V_R[vid], 0);
-    outputArray("p_R", V_R[pid], 0);
+       outputArray(Output_Folder, "rho_R", V_R[rhoid], 0);
+       outputArray(Output_Folder, "u_R", V_R[uid], 0);
+       outputArray(Output_Folder, "v_R", V_R[vid], 0);
+       outputArray(Output_Folder, "p_R", V_R[pid], 0);
 
-    outputArray("rho_B", V_B[rhoid], 0);
-    outputArray("u_B", V_B[uid], 0);
-    outputArray("v_B", V_B[vid], 0);
-    outputArray("p_B", V_B[pid], 0);
+       outputArray(Output_Folder, "rho_B", V_B[rhoid], 0);
+       outputArray(Output_Folder, "u_B", V_B[uid], 0);
+       outputArray(Output_Folder, "v_B", V_B[vid], 0);
+       outputArray(Output_Folder, "p_B", V_B[pid], 0);
 
-    outputArray("rho_T", V_T[rhoid], 0);
-    outputArray("u_T", V_T[uid], 0);
-    outputArray("v_T", V_T[vid], 0);
-    outputArray("p_T", V_T[pid], 0);
+       outputArray(Output_Folder, "rho_T", V_T[rhoid], 0);
+       outputArray(Output_Folder, "u_T", V_T[uid], 0);
+       outputArray(Output_Folder, "v_T", V_T[vid], 0);
+       outputArray(Output_Folder, "p_T", V_T[pid], 0);
 
-    outputArray("rho_mms", V_MMS[rhoid], 0);
-    outputArray("u_mms", V_MMS[uid], 0);
-    outputArray("v_mms", V_MMS[vid], 0);
-    outputArray("p_mms", V_MMS[pid], 0);
+       outputArray(Output_Folder, "rho_mms", V_MMS[rhoid], 0);
+       outputArray(Output_Folder, "u_mms", V_MMS[uid], 0);
+       outputArray(Output_Folder, "v_mms", V_MMS[vid], 0);
+       outputArray(Output_Folder, "p_mms", V_MMS[pid], 0);
 
-    outputArray("S1", S[rhoid], 0);
-    outputArray("S2", S[rhouid], 0);
-    outputArray("S3", S[rhovid], 0);
-    outputArray("S4", S[rhoetid], 0);
+       outputArray(Output_Folder, "S1", S[rhoid], 0);
+       outputArray(Output_Folder, "S2", S[rhouid], 0);
+       outputArray(Output_Folder, "S3", S[rhovid], 0);
+       outputArray(Output_Folder, "S4", S[rhoetid], 0);
+       */
   }
 
   //cout << x << endl;// Identify that all simulations have finished

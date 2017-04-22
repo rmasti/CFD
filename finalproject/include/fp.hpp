@@ -104,7 +104,7 @@ void initialize(MatrixXd* V, MatrixXd& xc_g, MatrixXd& yc_g, constants C);
 
 void computeTemperature(MatrixXd& T, MatrixXd* V);
 
-void outputArray(string FileName, MatrixXd& out, int n);
+void outputArray(string Address, string FileName, MatrixXd& out, int n);
 
 void solveSourceMMS(MatrixXd* S, MatrixXd& xc, MatrixXd& yc, constants C);
 
@@ -152,5 +152,8 @@ void outletBC(MatrixXd* V, int Begin[], int End[], constants C);
 
 void slipwallBC(MatrixXd* V, int Begin[], int End[], MatrixXd& n_i_xhat, MatrixXd& n_i_yhat, MatrixXd& n_j_xhat, MatrixXd& n_j_yhat, MatrixXd& T, constants C);
 
+void farfieldBC(MatrixXd* V, int Begin[], int End[], constants C);
+
+void periodicBC(MatrixXd* V, int BeginA[], int EndA[], int BeginB[], int EndB[], constants C);
 
 #endif
