@@ -28,7 +28,7 @@ using namespace Eigen;
 
 // DEFINE CONSTANTS
 
-#define R 287.058
+#define R 287.0
 #define GAMMA 1.4
 //#define PI 3.14159265359
 #define PI 3.1415926

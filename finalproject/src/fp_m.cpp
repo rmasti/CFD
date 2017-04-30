@@ -181,6 +181,9 @@ int main( int argc, char *argv[] )
   outputArray(Output_Folder, "Res3", Res[rhovid], 0);
   outputArray(Output_Folder, "Res4", Res[rhoetid], 0);
 
+  outputArray(Output_Folder, "Ai",Ai, 0);
+  outputArray(Output_Folder, "Aj",Aj, 0);
+
   outputArray(Output_Folder, "n_i_x", n_i_xhat, 0);
   outputArray(Output_Folder, "n_i_y", n_i_yhat, 0);
   outputArray(Output_Folder, "n_j_x", n_j_xhat, 0);
@@ -237,6 +240,7 @@ int main( int argc, char *argv[] )
       compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C); // Use roe or vanleer inside of C
       computeRes(Res, F, G, S, Ai, Aj, Volume, C);  
     }
+
     // compute maxspeed get new dt
     computeMaxSpeed(MaxSpeed, V, C);
     // compute timestep
@@ -253,18 +257,19 @@ int main( int argc, char *argv[] )
 
     if ( n % C.pint == 0)
     {
-      /*
       cout << 
         "rho: " << L2hist(rhoid,n+1)/L2hist(rhoid,0) << 
         " u: " << L2hist(uid,n+1)/L2hist(uid,0) << 
         " v: " << L2hist(vid,n+1)/L2hist(vid,0) <<  
         " p: " << L2hist(pid,n+1)/L2hist(pid,0) << endl;
-        */
+        
+      /*
       cout << 
         "rho: "<< Iterhist(rhoid,n+1) << 
         " u: " << Iterhist(uid,n+1)   << 
         " v: " << Iterhist(vid,n+1)   <<  
         " p: " << Iterhist(uid,n+1)   << endl;
+        */
  
     }
 
@@ -274,8 +279,17 @@ int main( int argc, char *argv[] )
       outputArray(Output_Folder, "u", V[uid], n);
       outputArray(Output_Folder, "v", V[vid], n);
       outputArray(Output_Folder, "p", V[pid], n);
+
+  outputArray(Output_Folder, "Res1", Res[rhoid], n);
+  outputArray(Output_Folder, "Res2", Res[rhouid], n);
+  outputArray(Output_Folder, "Res3", Res[rhovid], n);
+  outputArray(Output_Folder, "Res4", Res[rhoetid], n);
+
+
     }
 
+    if (n==C.nmax/100)
+      C.cfl=1.5;
     // Check for convergence
     if ( L2hist(rhoid,n+1)/L2hist(rhoid,0) < C.tol && L2hist(uid,n+1)/L2hist(uid,0) < C.tol &&  L2hist(vid,n+1)/L2hist(vid,0) < C.tol && L2hist(pid,n+1)/L2hist(pid,0) < C.tol )
     {
