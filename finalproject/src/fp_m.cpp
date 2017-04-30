@@ -30,10 +30,11 @@ int main( int argc, char *argv[] )
 
   // GET COORDS
   inputMesh(xn, yn, zn, xc, yc, zc, C); // resize and fill coords
+
   // Create xc and yc that includes ghost cells
   MatrixXd xc_g(xc.rows()+2*C.num_ghost, xc.cols()+2*C.num_ghost);
   MatrixXd yc_g(yc.rows()+2*C.num_ghost, yc.cols()+2*C.num_ghost);
-  extrapCopyCoords(xc_g, yc_g, xc, yc, C);
+  extrapCopyCoords(xc_g, yc_g, xc, yc, C); // get ghost cell coord
 
   // Create temperature dist for sake of BC
   MatrixXd T(xc_g.rows(), xc_g.cols()); // K
@@ -53,15 +54,17 @@ int main( int argc, char *argv[] )
   //Aj normal vector has x and y componenets
   MatrixXd n_j_xhat(Aj.rows(), Aj.cols());
   MatrixXd n_j_yhat(Aj.rows(), Aj.cols());
+
+  //Setup History tracking vectors
   MatrixXd L2hist(NEQ, C.nmax); // large matrix with all hist
   MatrixXd Iterhist(NEQ, C.nmax); // same for iter err
+
   // SETUP Max Speed AND dt
   ////calcs max character..(MHD to) (soundspeed or fast magnetosonic speed)
   MatrixXd MaxSpeed(xc.rows(), xc.cols());
-
   MatrixXd dt(xc.rows(), xc.cols()); //time step for local or global 
 
-  // SETUP VOLUMES
+  // SETUP VOLUMES 
   MatrixXd Volume(xc.rows(), xc.cols());
 
   ////////// matrix arrays
@@ -99,56 +102,61 @@ int main( int argc, char *argv[] )
     ///// Direction Depndent /////
     // Interior facevals xdir only resize
     F[eq].resize(xc.rows(),xn.cols()); // only need flux on the interior
-    V_L[eq].resize(xc.rows(),xn.cols()); // all faces of the cells 
-    V_R[eq].resize(xc.rows(),xn.cols());
+    V_L[eq].resize(xc.rows(),xn.cols()); // all faces of the cells of int
+    V_R[eq].resize(xc.rows(),xn.cols()); // right states
     // Interior facevals ydir only resize
     G[eq].resize(xn.rows(),xc.cols()); // only need flux on the interior
-    V_T[eq].resize(xn.rows(),xc.cols()); // all faces in y dir
+    V_T[eq].resize(xn.rows(),xc.cols()); // all faces in y dir to get G
     V_B[eq].resize(xn.rows(),xc.cols()); // all faces in y dir
   }
 
   ////////////////////// INITIALIZE ///////////////////////////
 
   //______ SET GEOMETRY ______//
-  computeArea(Ai, Aj, xn, yn);
+  computeArea(Ai, Aj, xn, yn); // take nodal coords extract interface A
   computeNormalVectors(n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat,
-      xn, yn, Ai, Aj);
-  computeVolume(Volume, xn, yn);
+      xn, yn, Ai, Aj); // grab the norm vec 4 computational domain
+  computeVolume(Volume, xn, yn); 
+  outputArray(Output_Folder,"volume", Volume, 0);
   //______SET PRIMITIVE VARIABLES______//
   cout << "Initializing... " << endl;
   initialize(V, xc_g, yc_g, C);
   //______SET BOUNDARY CONDITIONS/SOURCES______//
-  computeTemperature(T, V);
+  computeTemperature(T, V); // compute temp for slip wall condition
 
   if (C.f_case == 1) // MMS Curvilinear mesh
   {
-    solveSourceMMS(S,xc,yc, C);
-    solveSolutionMMS(V_MMS, xc_g, yc_g, C); // solution at cell w/ g
-    setBCMMS(V, V_MMS, C);
+    solveSourceMMS(S,xc,yc, C); // grab the source term for the MMS case
+    solveSolutionMMS(V_MMS, xc_g, yc_g, C); // solution at cell w/g
+    setBCMMS(V, V_MMS, C); // Sets the boundary conditions for MMS
+    outputArray(Output_Folder, "S1", S[rhoid], 0);
+    outputArray(Output_Folder, "S2", S[rhouid], 0);
+    outputArray(Output_Folder, "S3", S[rhovid], 0);
+    outputArray(Output_Folder, "S4", S[rhoetid], 0);
+    outputArray(Output_Folder, "rho_MMS", V_MMS[rhoid], 0);
+    outputArray(Output_Folder, "u_MMS", V_MMS[rhouid], 0);
+    outputArray(Output_Folder, "v_MMS", V_MMS[rhovid], 0);
+    outputArray(Output_Folder, "p_MMS", V_MMS[rhoetid], 0);
+ 
   }
   else // case 2 and 3 BC enforce and Source Determ
   {
-    // zero the source term
+    // zero the source term only need for MMS
     for (int eq = 0; eq < NEQ; eq++)
       S[eq] = MatrixXd::Constant(xc.rows(), xc.cols(), 0.0);
-    // set BC STILL TO DO
+    // set BC 
     setBC(V, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
-
   }
-  primToCons(U, V, C);  U_RK = U;
+  primToCons(U, V, C);  U_RK = U; // initialize U_RK
   ////////////////// ENTER TIME INTEGRATION LOOP ////////////////
   MUSCL(V_L,V_R,V_B,V_T,V,C); // MATCHES for case 1
-
   compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C);
-
   computeRes(Res, F, G, S, Ai, Aj, Volume, C);
-
   // compute maxspeed
   computeMaxSpeed(MaxSpeed, V, C);
   // compute timestep
   computeTimeStep(dt, Volume, Ai, Aj, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, MaxSpeed, V, C);
   // compute norms and errors
-
   L2hist.col(0) = computeL2(Res, C);
   if (C.f_case == 1) // compute error
   {
@@ -161,6 +169,12 @@ int main( int argc, char *argv[] )
   outputArray(Output_Folder, "u", V[uid], 0);
   outputArray(Output_Folder, "v", V[vid], 0);
   outputArray(Output_Folder, "p", V[pid], 0);
+
+  outputArray(Output_Folder, "xc", xc, 0);
+  outputArray(Output_Folder, "yc", yc, 0);
+  outputArray(Output_Folder, "xc_g", xc_g, 0);
+  outputArray(Output_Folder, "yc_g", yc_g, 0);
+
 
   outputArray(Output_Folder, "Res1", Res[rhoid], 0);
   outputArray(Output_Folder, "Res2", Res[rhouid], 0);
@@ -208,28 +222,28 @@ int main( int argc, char *argv[] )
   cout << "Entering Main Time Loop...." << endl;
   for ( int n = 1; n < C.nmax; n++) 
   {
-    for (int k = 0; k < C.rk_order; k++)
+    for (int k = 0; k < C.rk_order; k++) 
     {
       // RK takes k steps for a given dt 
+      // RK will refine the timestep guess of the residual thru sub cycling
       rungeKutta(U_RK, U, Res, Volume, dt, k, C); // update interior
       consToPrim(V, U_RK, C); // convert to prim var and apply BC's
       computeTemperature(T, V); // grab temp for B.C.'s
       if (C.f_case != 1) {
-        ////// NEED TO DO BC'S
+        ////// NEED TO DO BC'S NACA and Inlet
         setBC(V, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
       }
       MUSCL(V_L,V_R,V_B,V_T,V,C); // MATCHES for case 1
-      compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C);
-      computeRes(Res, F, G, S, Ai, Aj, Volume, C);
+      compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C); // Use roe or vanleer inside of C
+      computeRes(Res, F, G, S, Ai, Aj, Volume, C);  
     }
-    // compute maxspeed
+    // compute maxspeed get new dt
     computeMaxSpeed(MaxSpeed, V, C);
     // compute timestep
     computeTimeStep(dt, Volume, Ai, Aj, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, MaxSpeed, V, C);
 
     U = U_RK; // update RK
 
-    //cout << L2hist(3,n+1)/L2hist(3,0) << " " << Iterhist(0,n) << endl;
     L2hist.col(n+1) = computeL2(Res, C);
     if (C.f_case == 1) // compute error
     {
@@ -239,11 +253,19 @@ int main( int argc, char *argv[] )
 
     if ( n % C.pint == 0)
     {
+      /*
       cout << 
         "rho: " << L2hist(rhoid,n+1)/L2hist(rhoid,0) << 
         " u: " << L2hist(uid,n+1)/L2hist(uid,0) << 
         " v: " << L2hist(vid,n+1)/L2hist(vid,0) <<  
         " p: " << L2hist(pid,n+1)/L2hist(pid,0) << endl;
+        */
+      cout << 
+        "rho: "<< Iterhist(rhoid,n+1) << 
+        " u: " << Iterhist(uid,n+1)   << 
+        " v: " << Iterhist(vid,n+1)   <<  
+        " p: " << Iterhist(uid,n+1)   << endl;
+ 
     }
 
     if ( n % C.wint == 0)
@@ -270,9 +292,8 @@ int main( int argc, char *argv[] )
       outputArray(Output_Folder, "IterErrHist", Iterhist, n);
       outputArray(Output_Folder, "L2Hist", L2hist, n);
       break;
-
     }
-    if (std::isnan(L2hist(0,n+1)/L2hist(0,0)))
+    if (std::isnan(L2hist(0,n+1)/L2hist(0,0))) // check for NAN's
     {
       cerr << "NAN: 404 abort" << endl;
       exit(1);
@@ -280,72 +301,6 @@ int main( int argc, char *argv[] )
   }
 
 
-  if (DEBUG)
-  {
-    /////////////////// OUTPUT ARRAYS ///////////////////////////
-    /*
-       outputArray(Output_Folder, "dt", dt, 0);
-       outputArray(Output_Folder, "MaxSpeed", MaxSpeed, 0);
-
-       outputArray(Output_Folder, "Res1", Res[rhoid], 0);
-       outputArray(Output_Folder, "Res2", Res[rhouid], 0);
-       outputArray(Output_Folder, "Res3", Res[rhovid], 0);
-       outputArray(Output_Folder, "Res4", Res[rhoetid], 0);
-
-       outputArray(Output_Folder, "n_i_x", n_i_xhat, 0);
-       outputArray(Output_Folder, "n_i_y", n_i_yhat, 0);
-       outputArray(Output_Folder, "n_j_x", n_j_xhat, 0);
-       outputArray(Output_Folder, "n_j_y", n_j_yhat, 0);
-
-
-       outputArray(Output_Folder, "F1", F[frhouid], 0);
-       outputArray(Output_Folder, "F2", F[frhouuid], 0);
-       outputArray(Output_Folder, "F3", F[frhouvid], 0);
-       outputArray(Output_Folder, "F4", F[frhouhtid], 0);
-
-       outputArray(Output_Folder, "G1", G[grhovid], 0);
-       outputArray(Output_Folder, "G2", G[grhouvid], 0);
-       outputArray(Output_Folder, "G3", G[grhovvid], 0);
-       outputArray(Output_Folder, "G4", G[grhovhtid], 0);
-
-       outputArray(Output_Folder, "rho", V[rhoid], 0);
-       outputArray(Output_Folder, "u", V[uid], 0);
-       outputArray(Output_Folder, "v", V[vid], 0);
-       outputArray(Output_Folder, "p", V[pid], 0);
-
-       outputArray(Output_Folder, "rho_L", V_L[rhoid], 0);
-       outputArray(Output_Folder, "u_L", V_L[uid], 0);
-       outputArray(Output_Folder, "v_L", V_L[vid], 0);
-       outputArray(Output_Folder, "p_L", V_L[pid], 0);
-
-       outputArray(Output_Folder, "rho_R", V_R[rhoid], 0);
-       outputArray(Output_Folder, "u_R", V_R[uid], 0);
-       outputArray(Output_Folder, "v_R", V_R[vid], 0);
-       outputArray(Output_Folder, "p_R", V_R[pid], 0);
-
-       outputArray(Output_Folder, "rho_B", V_B[rhoid], 0);
-       outputArray(Output_Folder, "u_B", V_B[uid], 0);
-       outputArray(Output_Folder, "v_B", V_B[vid], 0);
-       outputArray(Output_Folder, "p_B", V_B[pid], 0);
-
-       outputArray(Output_Folder, "rho_T", V_T[rhoid], 0);
-       outputArray(Output_Folder, "u_T", V_T[uid], 0);
-       outputArray(Output_Folder, "v_T", V_T[vid], 0);
-       outputArray(Output_Folder, "p_T", V_T[pid], 0);
-
-       outputArray(Output_Folder, "rho_mms", V_MMS[rhoid], 0);
-       outputArray(Output_Folder, "u_mms", V_MMS[uid], 0);
-       outputArray(Output_Folder, "v_mms", V_MMS[vid], 0);
-       outputArray(Output_Folder, "p_mms", V_MMS[pid], 0);
-
-       outputArray(Output_Folder, "S1", S[rhoid], 0);
-       outputArray(Output_Folder, "S2", S[rhouid], 0);
-       outputArray(Output_Folder, "S3", S[rhovid], 0);
-       outputArray(Output_Folder, "S4", S[rhoetid], 0);
-       */
-  }
-
-  //cout << x << endl;// Identify that all simulations have finished
   return 0;
 }
 

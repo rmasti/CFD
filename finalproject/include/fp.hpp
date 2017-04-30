@@ -52,8 +52,8 @@ using namespace Eigen;
 #define frhouhtid 3        // F4
 
 #define grhovid 0          // G1
-#define grhovvid 1         // G2
-#define grhouvid 2         // G3
+#define grhouvid 1         // G2
+#define grhovvid 2         // G3
 #define grhovhtid 3        // G4
 
 // CREATE STRUCTURE DEFINITION

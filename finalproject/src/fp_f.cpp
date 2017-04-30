@@ -460,7 +460,7 @@ void setBC(
   {
     case 1: // curvilinear MMS BC
       {
-        cerr << "ERROR: Not Apply the Correct BC's !!" << endl;
+        cerr << "ERROR: Not Applying the Correct BC's !!" << endl;
         exit(1);
         break;
       }
@@ -596,19 +596,19 @@ void rungeKutta(
     exit(1);
   } 
   double a[4];
-  if (C.rk_order == 1)
+  if (C.rk_order == 1) // 1 stage RK 
   {
     a[0] = 1.0; a[1]=a[2]=a[3]=0;
   }
-  if (C.rk_order == 2)
+  if (C.rk_order == 2) // 2 stage RK
   {
     a[0] = 0.5; a[1] = 1.0; a[2]=a[3]=0;
   }
-  if (C.rk_order == 4)
+  if (C.rk_order == 4) // 4 stage RK
   {
     a[0] = 0.25; a[1] = 1.0/3.0; a[2] = 0.5; a[3] = 1.0;
   }
-  if (C.rk_order == 3 || C.rk_order > 4)
+  if (C.rk_order == 3 || C.rk_order > 4) // no sense in doing 3
   {
     cerr << "ERROR: RK Order Not Available?!?!" << endl;
     exit(1);
@@ -810,19 +810,6 @@ void computeFluxVL(
     constants C            // input - constants for MHD
     )
 {
-  // Grab the matrices for the sake of cleanliness
-  MatrixXd rho_L = V_Left[rhoid];
-  MatrixXd rho_R = V_Right[rhoid];
-
-  MatrixXd u_L = V_Left[uid];
-  MatrixXd u_R = V_Right[uid];
-
-  MatrixXd v_L = V_Left[vid];
-  MatrixXd v_R = V_Right[vid];
-
-  MatrixXd p_L = V_Left[pid];
-  MatrixXd p_R = V_Right[pid];
-
   // define constants
   double M_L, M_R, M_p, M_n;
   double beta_L, beta_R;
@@ -850,12 +837,12 @@ void computeFluxVL(
     for (int j = 0; j < nj; j++)
     {
       // compute sound speed
-      a_L = sqrt(GAMMA*p_L(j,i) / rho_L(j,i)); 
-      a_R = sqrt(GAMMA*p_R(j,i) / rho_R(j,i)); 
+      a_L = sqrt(GAMMA*V_Left[pid](j,i) / V_Left[rhoid](j,i)); 
+      a_R = sqrt(GAMMA*V_Right[pid](j,i) / V_Right[rhoid](j,i)); 
 
       // compute speed
-      U_L = u_L(j,i)*nxhat(j,i) + v_L(j,i)*nyhat(j,i);
-      U_R = u_R(j,i)*nxhat(j,i) + v_R(j,i)*nyhat(j,i);
+      U_L = V_Left[uid](j,i)*nxhat(j,i) + V_Left[vid](j,i)*nyhat(j,i);
+      U_R = V_Right[uid](j,i)*nxhat(j,i) + V_Right[vid](j,i)*nyhat(j,i);
 
       // compute mach # from speed Mach is a scalar***
       M_L = U_L/a_L;
@@ -885,21 +872,32 @@ void computeFluxVL(
       D_n = alpha_n*(1+beta_R) - beta_R*p_bar_n;
 
       // left and right enthalpy
-      ht_L = (GAMMA/(GAMMA-1))*p_L(j,i)/rho_L(j,i) 
-        + 0.5*( u_L(j,i)*u_L(j,i) + v_L(j,i)*v_L(j,i));
-      ht_R = (GAMMA/(GAMMA-1))*p_R(j,i)/rho_R(j,i) 
-        + 0.5*( u_R(j,i)*u_R(j,i) + v_R(j,i)*v_R(j,i));
+      ht_L = (GAMMA/(GAMMA-1))*V_Left[pid](j,i)/V_Left[rhoid](j,i) 
+        + 0.5*( V_Left[uid](j,i)*V_Left[uid](j,i) + 
+            V_Left[vid](j,i)*V_Left[vid](j,i));
+      ht_R = (GAMMA/(GAMMA-1))*V_Right[pid](j,i)/V_Right[rhoid](j,i) 
+        + 0.5*( V_Right[uid](j,i)*V_Right[uid](j,i) + 
+            V_Right[vid](j,i)*V_Right[vid](j,i));
+
 
       // compute convective flux contribution
-      Fc[0] = rho_L(j,i)*a_L*c_p + rho_R(j,i)*a_R*c_n;
-      Fc[1] = rho_L(j,i)*a_L*c_p*u_L(j,i) + rho_R(j,i)*a_R*c_n*u_R(j,i);
-      Fc[2] = rho_L(j,i)*a_L*c_p*v_L(j,i) + rho_R(j,i)*a_R*c_n*v_R(j,i);
-      Fc[3] = rho_L(j,i)*a_L*c_p*ht_L + rho_R(j,i)*a_R*c_n*ht_R;
+      Fc[0] = V_Left[rhoid](j,i)*a_L*c_p + V_Right[rhoid](j,i)*a_R*c_n;
+
+      Fc[1] = V_Left[rhoid](j,i)*a_L*c_p*V_Left[uid](j,i) 
+        + V_Right[rhoid](j,i)*a_R*c_n*V_Right[uid](j,i);
+
+      Fc[2] = V_Left[rhoid](j,i)*a_L*c_p*V_Left[vid](j,i) 
+        + V_Right[rhoid](j,i)*a_R*c_n*V_Right[vid](j,i);
+
+      Fc[3] = V_Left[rhoid](j,i)*a_L*c_p*ht_L 
+        + V_Right[rhoid](j,i)*a_R*c_n*ht_R;
 
       // compute pressure flux contribution
       Fp[0] = 0.0;
-      Fp[1] = D_p*nxhat(j,i)*p_L(j,i) + D_n*nxhat(j,i)*p_R(j,i);
-      Fp[2] = D_p*nyhat(j,i)*p_L(j,i) + D_n*nyhat(j,i)*p_R(j,i);
+      Fp[1] = D_p*nxhat(j,i)*V_Left[pid](j,i) + 
+        D_n*nxhat(j,i)*V_Right[pid](j,i);
+      Fp[2] = D_p*nyhat(j,i)*V_Left[pid](j,i) + 
+        D_n*nyhat(j,i)*V_Right[pid](j,i);
       Fp[3] = 0.0;
 
       // loop over and add the two
@@ -1000,7 +998,8 @@ void computeFluxRoe(
       lambda3 = abs(U_hat_Roe + a_Roe); // u+a 1D
       lambda4 = abs(U_hat_Roe - a_Roe); // u-a 1D
 
-      // fix the repeated eigen values
+      // apply expansion fan fix
+      // fix the repeated eigen values (u) 
       if (lambda1 < 2*eps*a_Roe)
       {
         lambda1 = lambda1*lambda1/(4*eps*a_Roe) + eps*a_Roe;
@@ -1359,6 +1358,7 @@ void setBCMMS(
     {
       for (int eq = 0; eq < NEQ; eq++)
       {
+
         // bottom index - j is the filling of ghost
         V[eq](bot-j,i) = V_MMS[eq](bot-j,i);
         // top index top + j is filling ghost
@@ -1517,8 +1517,8 @@ void solveSourceMMS(
       S[rhouid](j,i) = (3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/L + (2*Pi*vvely*cos((2*Pi*y)/(3.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/(3.*L) + (Pi*rhox*cos((Pi*x)/L)*pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2))/L - (2*Pi*pressx*sin((2*Pi*x)/L))/L - (Pi*rhoy*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*sin((Pi*y)/(2.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/ (2.*L) - (3*Pi*uvely*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*sin((3*Pi*y)/(5.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/(5.*L);
 
       S[rhovid](j,i) = (Pi*pressy*cos((Pi*y)/L))/L - (Pi*vvelx*sin((Pi*x)/(2.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/(2.*L) + (3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/(2.*L) + (4*Pi*vvely*cos((2*Pi*y)/(3.*L))*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/(3.*L) + (Pi*rhox*cos((Pi*x)/L)*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/L - (Pi*rhoy*sin((Pi*y)/(2.*L))*pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/(2.*L); 
-
-      S[rhoetid](j,i) = (uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*((-2*Pi*pressx*sin((2*Pi*x)/L))/L + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((-2*Pi*pressx*sin((2*Pi*x)/L))/((-1 + gamma)*L*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))) + ((3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/L - (Pi*vvelx*sin((Pi*x)/(2.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/L)/2. - (Pi*rhox*cos((Pi*x)/L)*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L)))/((-1 + gamma)*L*pow(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L),2))) + (Pi*rhox*cos((Pi*x)/L)*((pow(wvel0,2) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L)))))/L) + (3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L) + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((pow(wvel0,2) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))))))/(2.*L) + (2*Pi*vvely*cos((2*Pi*y)/(3.*L))*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L) + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((pow(wvel0,2) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))))))/(3.*L) + (vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)))*((Pi*pressy*cos((Pi*y)/L))/L - (Pi*rhoy*sin((Pi*y)/(2.*L))*((pow(wvel0,2) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L)))))/(2.*L) + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((Pi*pressy*cos((Pi*y)/L))/((-1 + gamma)*L*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))) + ((-6*Pi*uvely*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*sin((3*Pi*y)/(5.*L)))/(5.*L) + (4*Pi*vvely*cos((2*Pi*y)/(3.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/(3.*L))/2. + (Pi*rhoy*sin((Pi*y)/(2.*L))*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L)))/(2.*(-1 + gamma)*L*pow(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L),2)))); 
+      
+      S[rhoetid](j,i) = (uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*((-2*Pi*pressx*sin((2*Pi*x)/L))/L + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((-2*Pi*pressx*sin((2* Pi*x)/L))/((-1 + gamma)*L*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))) + ((3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L))))/L - (Pi*vvelx*sin((Pi*x)/(2.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/L)/2. - (Pi*rhox*cos((Pi*x)/L)*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L)))/((-1 + gamma)*L*pow(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L),2.))) + (Pi*rhox*cos((Pi*x)/L)*((pow(wvel0,2.) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2.) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2.))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L)))))/L) + (3*Pi*uvelx*cos((3*Pi*x)/(2.*L))*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L) + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((pow(wvel0,2.) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2.) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2.))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))))))/(2.*L) + (2*Pi*vvely*cos((2*Pi*y)/(3.*L))*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L) + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((pow(wvel0,2.) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2.) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2.))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))))))/(3.*L) + (vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)))*((Pi*pressy*cos((Pi*y)/L))/L - (Pi*rhoy*sin((Pi*y)/(2.*L))*((pow(wvel0,2.) + pow(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)),2.) + pow(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L)),2.))/2. + (press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L))/((-1 + gamma)*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L)))))/(2.*L) + (rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))*((Pi*pressy*cos((Pi*y)/L))/((-1 + gamma)*L*(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L))) + ((-6*Pi*uvely*(uvel0 + uvely*cos((3*Pi*y)/(5.*L)) + uvelx*sin((3*Pi*x)/(2.*L)))*sin((3*Pi*y)/(5.*L)))/(5.*L) + (4*Pi*vvely*cos((2*Pi*y)/(3.*L))*(vvel0 + vvelx*cos((Pi*x)/(2.*L)) + vvely*sin((2*Pi*y)/(3.*L))))/(3.*L))/2. + (Pi*rhoy*sin((Pi*y)/(2.*L))*(press0 + pressx*cos((2*Pi*x)/L) + pressy*sin((Pi*y)/L)))/(2.*(-1 + gamma)*L*pow(rho0 + rhoy*cos((Pi*y)/(2.*L)) + rhox*sin((Pi*x)/L),2.))));
     }
   }
   // FROM the paper the initial values
@@ -1543,7 +1543,8 @@ void outputArray(
 
   // Alot of options for outputting this is just nice to see 
   // where lines end and start
-  IOFormat CleanFmt(14,0,", ", "\n", "[", "]");
+  //IOFormat CleanFmt(14,0,", ", "\n", "[", "]");
+  IOFormat CleanFmt(14);
   outfile << out.transpose().format(CleanFmt) << endl; // output trans
   //outfile << setprecision(14) << out << endl; // output trans
 }
@@ -1898,6 +1899,8 @@ void inputMesh(
 }
 
 string readMeshName(
+    // This function reads in the mesh name and return the filename
+    // it will be used to extract the data
     constants C
     )
 {
