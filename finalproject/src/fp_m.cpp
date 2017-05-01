@@ -63,7 +63,7 @@ int main( int argc, char *argv[] )
   ////calcs max character..(MHD to) (soundspeed or fast magnetosonic speed)
   MatrixXd MaxSpeed(xc.rows(), xc.cols());
   MatrixXd dt(xc.rows(), xc.cols()); //time step for local or global 
-
+  double dt_min;
   // SETUP VOLUMES 
   MatrixXd Volume(xc.rows(), xc.cols());
 
@@ -155,7 +155,7 @@ int main( int argc, char *argv[] )
   // compute maxspeed
   computeMaxSpeed(MaxSpeed, V, C);
   // compute timestep
-  computeTimeStep(dt, Volume, Ai, Aj, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, MaxSpeed, V, C);
+  dt_min = computeTimeStep(dt, Volume, Ai, Aj, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, MaxSpeed, V, C);
   // compute norms and errors
   L2hist.col(0) = computeL2(Res, C);
   if (C.f_case == 1) // compute error
@@ -229,7 +229,7 @@ int main( int argc, char *argv[] )
     {
       // RK takes k steps for a given dt 
       // RK will refine the timestep guess of the residual thru sub cycling
-      rungeKutta(U_RK, U, Res, Volume, dt, k, C); // update interior
+      rungeKutta(U_RK, U, Res, Volume, dt, k, dt_min, C); // update interior
       consToPrim(V, U_RK, C); // convert to prim var and apply BC's
       computeTemperature(T, V); // grab temp for B.C.'s
       if (C.f_case != 1) {
@@ -243,8 +243,8 @@ int main( int argc, char *argv[] )
 
     // compute maxspeed get new dt
     computeMaxSpeed(MaxSpeed, V, C);
-    // compute timestep
-    computeTimeStep(dt, Volume, Ai, Aj, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, MaxSpeed, V, C);
+    // compute timestep local and global
+    dt_min = computeTimeStep(dt, Volume, Ai, Aj, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, MaxSpeed, V, C);
 
     U = U_RK; // update RK
 
@@ -288,7 +288,7 @@ int main( int argc, char *argv[] )
 
     }
 
-    if (n==C.nmax/100)
+    if (n==C.nmax/1000)
       C.cfl=1.5;
     // Check for convergence
     if ( L2hist(rhoid,n+1)/L2hist(rhoid,0) < C.tol && L2hist(uid,n+1)/L2hist(uid,0) < C.tol &&  L2hist(vid,n+1)/L2hist(vid,0) < C.tol && L2hist(pid,n+1)/L2hist(pid,0) < C.tol )

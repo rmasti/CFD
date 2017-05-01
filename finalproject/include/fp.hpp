@@ -132,13 +132,13 @@ void computeRes(MatrixXd* Res, MatrixXd* F, MatrixXd* G, MatrixXd* S, MatrixXd& 
 
 void computeMaxSpeed(MatrixXd& MaxSpeed, MatrixXd* V, constants C);
 
-void computeTimeStep(MatrixXd& dt, MatrixXd& Volume, MatrixXd& Ai, MatrixXd& Aj, MatrixXd& n_i_xhat, MatrixXd& n_i_yhat, MatrixXd& n_j_xhat, MatrixXd& n_j_yhat, MatrixXd& MaxSpeed, MatrixXd* V, constants C);
+double computeTimeStep(MatrixXd& dt, MatrixXd& Volume, MatrixXd& Ai, MatrixXd& Aj, MatrixXd& n_i_xhat, MatrixXd& n_i_yhat, MatrixXd& n_j_xhat, MatrixXd& n_j_yhat, MatrixXd& MaxSpeed, MatrixXd* V, constants C);
 
 VectorXd computeL2(MatrixXd* Res, constants C);
 
 void computeError(MatrixXd* Error, MatrixXd* V, MatrixXd* V_MMS, constants C);
 
-void rungeKutta(MatrixXd* U_RK, MatrixXd* U, MatrixXd* Res, MatrixXd& Volume, MatrixXd& dt, int k, constants C);
+void rungeKutta(MatrixXd* U_RK, MatrixXd* U, MatrixXd* Res, MatrixXd& Volume, MatrixXd& dt, int k, double dt_min, constants C);
 
 void consToPrim(MatrixXd* V, MatrixXd* U, constants C);
 
