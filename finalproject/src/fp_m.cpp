@@ -267,9 +267,8 @@ int main( int argc, char *argv[] )
       outputArray(Output_Folder, "Res4", Res[rhoetid], n);
     }
 
-    if (n==C.nmax/500)
+    if (n==C.nmax/200)
       C.f_limiter=0; // turn off limiter
-
     // Check for convergence
     if ( L2hist(rhoid,n+1)/L2hist(rhoid,0) < C.tol && L2hist(uid,n+1)/L2hist(uid,0) < C.tol &&  L2hist(vid,n+1)/L2hist(vid,0) < C.tol && L2hist(pid,n+1)/L2hist(pid,0) < C.tol )
     {

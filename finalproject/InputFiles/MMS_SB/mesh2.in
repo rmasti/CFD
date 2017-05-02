@@ -8,7 +8,7 @@ f_AOA: 1;            // 1 for 0 deg, 2 for 8 deg for case 3 only
 
 f_upwind: 1;         // 1 for van leer, 2 for good ole Roe FDS
 
-f_limiter: 1;        // 0 for limiter OFF, 1 for van leer, 2 for Van albaada, 3 ospre, 4 MCD, 5 MinMOD, 6 superbee....
+f_limiter: 5;        // 0 for limiter OFF, 1 for van leer, 2 for Van albaada, 3 ospre, 4 MCD, 5 MinMOD, 6 superbee....
 
 f_eps: 1.0;            // 1 for 2nd order, 0 for 1st order
 

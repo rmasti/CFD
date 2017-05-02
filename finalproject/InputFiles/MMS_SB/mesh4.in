@@ -26,6 +26,6 @@ num_ghost: 3;        // number of ghost layers added
 
 localdt: 0;          // 0 - use global dt, 1 - use local dt
 
-tol: 1.0e-12;        // iterative tolerance for the solution
+tol: 1.0e-10;        // iterative tolerance for the solution
 
-cfl: 1.5;            // CFL number for time stepping
+cfl: 1.2;            // CFL number for time stepping
