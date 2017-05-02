@@ -397,7 +397,6 @@ void inletBC(
       V[pid](j_g+j,i_e+i) = P0; 
     }
   }
-
 }
 
 void symmetricBC(
@@ -924,20 +923,6 @@ void computeFluxRoe(
     constants C            // input - constants for MHD maybe
     )
 {
-
-  // Grab the matrices for the sake of cleanliness
-  MatrixXd rho_L = V_Left[rhoid];
-  MatrixXd rho_R = V_Right[rhoid];
-
-  MatrixXd u_L = V_Left[uid];
-  MatrixXd u_R = V_Right[uid];
-
-  MatrixXd v_L = V_Left[vid];
-  MatrixXd v_R = V_Right[vid];
-
-  MatrixXd p_L = V_Left[pid];
-  MatrixXd p_R = V_Right[pid];
-
   // define roe averaged vars
   double rho_Roe;
   double u_Roe;
@@ -966,8 +951,8 @@ void computeFluxRoe(
   // 2nd order contribution
   double sum2ndOrder;
 
-  int ni = u_L.cols();
-  int nj = u_L.rows();
+  int ni = V_Left[uid].cols();
+  int nj = V_Left[uid].rows();
 
   // check for dimension mismatch
   if (nxhat.rows() != nj || nxhat.cols() != ni)
@@ -980,18 +965,18 @@ void computeFluxRoe(
     for (int i = 0; i < ni; i++)
     {
       // compute roe avgd quantities like before
-      R_Roe = sqrt(rho_R(j,i)/rho_L(j,i));
-      rho_Roe = R_Roe*rho_L(j,i);
-      u_Roe = (R_Roe*u_R(j,i) + u_L(j,i)) / (R_Roe + 1);
-      v_Roe = (R_Roe*v_R(j,i) + v_L(j,i)) / (R_Roe + 1);
+      R_Roe = sqrt(V_Right[rhoid](j,i)/V_Left[rhoid](j,i));
+      rho_Roe = R_Roe*V_Left[rhoid](j,i);
+      u_Roe = (R_Roe*V_Right[uid](j,i) + V_Left[uid](j,i)) / (R_Roe + 1);
+      v_Roe = (R_Roe*V_Right[vid](j,i) + V_Left[vid](j,i)) / (R_Roe + 1);
       // Find the 2D effect on the speed
       U_hat_Roe = u_Roe*nxhat(j,i) + v_Roe*nyhat(j,i);// get the speed
 
       // Roe averaged vars
-      ht_L = (GAMMA/(GAMMA-1))*p_L(j,i)/rho_L(j,i) 
-        + 0.5*( u_L(j,i)*u_L(j,i) + v_L(j,i)*v_L(j,i));
-      ht_R = (GAMMA/(GAMMA-1))*p_R(j,i)/rho_R(j,i) 
-        + 0.5*( u_R(j,i)*u_R(j,i) + v_R(j,i)*v_R(j,i));
+      ht_L = (GAMMA/(GAMMA-1))*V_Left[pid](j,i)/V_Left[rhoid](j,i) 
+        + 0.5*( V_Left[uid](j,i)*V_Left[uid](j,i) + V_Left[vid](j,i)*V_Left[vid](j,i));
+      ht_R = (GAMMA/(GAMMA-1))*V_Right[pid](j,i)/V_Right[rhoid](j,i) 
+        + 0.5*( V_Right[uid](j,i)*V_Right[uid](j,i) + V_Right[vid](j,i)*V_Right[vid](j,i));
       ht_Roe = (R_Roe*ht_R + ht_L) / (R_Roe + 1);
 
       // sound speed with the energy uu+vv (2D)
@@ -1038,10 +1023,10 @@ void computeFluxRoe(
       r4[3] = (-0.5*rho_Roe/a_Roe) * ( ht_Roe - a_Roe*U_hat_Roe );
 
       // compute delta's
-      drho = rho_R(j,i) - rho_L(j,i);
-      du = u_R(j,i) - u_L(j,i);
-      dv = v_R(j,i) - v_L(j,i);
-      dp = p_R(j,i) - p_L(j,i);
+      drho = V_Right[rhoid](j,i) - V_Left[rhoid](j,i);
+      du = V_Right[uid](j,i) - V_Left[uid](j,i);
+      dv = V_Right[vid](j,i) - V_Left[vid](j,i);
+      dp = V_Right[pid](j,i) - V_Left[pid](j,i);
 
       // compute characteristic variables
       dw1 = drho - dp/(a_Roe*a_Roe);
@@ -1050,21 +1035,21 @@ void computeFluxRoe(
       dw4 = du*nxhat(j,i) + dv*nyhat(j,i) - dp/(rho_Roe*a_Roe);
 
       // compute components of the speed for the Left and Right states
-      U_hat_Roe_L = ( u_L(j,i)*nxhat(j,i) + v_L(j,i)*nyhat(j,i));
-      U_hat_Roe_R = ( u_R(j,i)*nxhat(j,i) + v_R(j,i)*nyhat(j,i));
+      U_hat_Roe_L = ( V_Left[uid](j,i)*nxhat(j,i) + V_Left[vid](j,i)*nyhat(j,i));
+      U_hat_Roe_R = ( V_Right[uid](j,i)*nxhat(j,i) + V_Right[vid](j,i)*nyhat(j,i));
 
       // grab the first order contributions
-      F_L[0] = rho_L(j,i)*U_hat_Roe_L;
-      F_R[0] = rho_R(j,i)*U_hat_Roe_R;
+      F_L[0] = V_Left[rhoid](j,i)*U_hat_Roe_L;
+      F_R[0] = V_Right[rhoid](j,i)*U_hat_Roe_R;
 
-      F_L[1] = rho_L(j,i)*u_L(j,i)*U_hat_Roe_L + p_L(j,i)*nxhat(j,i);
-      F_R[1] = rho_R(j,i)*u_R(j,i)*U_hat_Roe_R + p_R(j,i)*nxhat(j,i);
+      F_L[1] = V_Left[rhoid](j,i)*V_Left[uid](j,i)*U_hat_Roe_L + V_Left[pid](j,i)*nxhat(j,i);
+      F_R[1] = V_Right[rhoid](j,i)*V_Right[uid](j,i)*U_hat_Roe_R + V_Right[pid](j,i)*nxhat(j,i);
 
-      F_L[2] = rho_L(j,i)*v_L(j,i)*U_hat_Roe_L + p_L(j,i)*nxhat(j,i);
-      F_R[2] = rho_R(j,i)*v_R(j,i)*U_hat_Roe_R + p_R(j,i)*nxhat(j,i);
+      F_L[2] = V_Left[rhoid](j,i)*V_Left[vid](j,i)*U_hat_Roe_L + V_Left[pid](j,i)*nxhat(j,i);
+      F_R[2] = V_Right[rhoid](j,i)*V_Right[vid](j,i)*U_hat_Roe_R + V_Right[pid](j,i)*nxhat(j,i);
 
-      F_L[3] = rho_L(j,i)*ht_L*U_hat_Roe_L;
-      F_R[3] = rho_R(j,i)*ht_R*U_hat_Roe_R;
+      F_L[3] = V_Left[rhoid](j,i)*ht_L*U_hat_Roe_L;
+      F_R[3] = V_Right[rhoid](j,i)*ht_R*U_hat_Roe_R;
 
       // Combine 1st order and 2nd order
       // sum over the right vectors
@@ -1237,6 +1222,8 @@ void computeUpwindVBT(
       }  
     }
   }
+  delete [] Psi_Pos; Psi_Pos=NULL;
+  delete [] Psi_Neg; Psi_Neg=NULL;
 }
 
 void computeUpwindVLR(
@@ -1318,6 +1305,8 @@ void computeUpwindVLR(
       }  
     }
   }
+  delete [] Psi_Pos; delete [] Psi_Neg;
+  Psi_Pos=NULL; Psi_Neg=NULL;
 }
 
 

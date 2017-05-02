@@ -11,15 +11,13 @@ int main( int argc, char *argv[] )
 {
   // Define Constants with the datastructure "constants" 
   const char * InputFile =  argv[1];
-  constants C = loadInputFile(InputFile);
+  constants C = loadInputFile(InputFile); // from argv load the input constants for data extraction
 
   // Now with the constants inputted create the output folder for cleanliness sake
-
   string Output_Folder = buildCaseFolder(C); // return the name of the folder it created for writing to
   Output_Folder = "./output/" + Output_Folder;
-  /////////////////////////////////////////////////////////////
+
   ////////////////////// READ THE MESH ////////////////////////
-  /////////////////////////////////////////////////////////////
   MatrixXd xn; // x coord for interface or nodal points of the cells
   MatrixXd yn; // y coord for interface or nodal points of the cells
   MatrixXd zn; // z coord for nodal z points
@@ -40,7 +38,6 @@ int main( int argc, char *argv[] )
   MatrixXd T(xc_g.rows(), xc_g.cols()); // K
 
   ////////////////////// SETUP VARIABLES //////////////////////
-
   // SETUP AREA's
   //i or x dir areas the columns of the matrix
   MatrixXd Ai(xc.rows(), xn.cols()); // sets (row,col) (j,i)
@@ -54,20 +51,17 @@ int main( int argc, char *argv[] )
   //Aj normal vector has x and y componenets
   MatrixXd n_j_xhat(Aj.rows(), Aj.cols());
   MatrixXd n_j_yhat(Aj.rows(), Aj.cols());
-
   //Setup History tracking vectors
   MatrixXd L2hist(NEQ, C.nmax); // large matrix with all hist
   MatrixXd Iterhist(NEQ, C.nmax); // same for iter err
-
   // SETUP Max Speed AND dt
   ////calcs max character..(MHD to) (soundspeed or fast magnetosonic speed)
   MatrixXd MaxSpeed(xc.rows(), xc.cols());
   MatrixXd dt(xc.rows(), xc.cols()); //time step for local or global 
-  double dt_min;
+  double dt_min; // used for global t stepping only
   // SETUP VOLUMES 
   MatrixXd Volume(xc.rows(), xc.cols());
-
-  ////////// matrix arrays
+  // SETUP NEQ MATRIX ARRAY'S WITH POINTERs
   // direction independent
   MatrixXd* V=new MatrixXd[NEQ]; // primitive variables
   MatrixXd* V_MMS=new MatrixXd[NEQ]; // MMS solution
@@ -84,7 +78,7 @@ int main( int argc, char *argv[] )
   MatrixXd* V_T =new MatrixXd[NEQ]; // Top Prim Var states
   MatrixXd* V_B =new MatrixXd[NEQ]; // Bottom Prim Var States
   // set size of the array 
-  // add the ghost cell layers
+  // add the ghost cell layers for the big mats
   int ncols = xc.cols()+2*C.num_ghost;
   int nrows = xc.rows()+2*C.num_ghost;
   for (int eq = 0 ; eq < NEQ ; eq++)
@@ -111,7 +105,6 @@ int main( int argc, char *argv[] )
   }
 
   ////////////////////// INITIALIZE ///////////////////////////
-
   //______ SET GEOMETRY ______//
   computeArea(Ai, Aj, xn, yn); // take nodal coords extract interface A
   computeNormalVectors(n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat,
@@ -123,13 +116,12 @@ int main( int argc, char *argv[] )
   initialize(V, xc_g, yc_g, C);
   //______SET BOUNDARY CONDITIONS/SOURCES______//
   computeTemperature(T, V); // compute temp for slip wall condition
-
   if (C.f_case == 1) // MMS Curvilinear mesh
   {
     solveSourceMMS(S,xc,yc, C); // grab the source term for the MMS case
     solveSolutionMMS(V_MMS, xc_g, yc_g, C); // solution at cell w/g
     setBCMMS(V, V_MMS, C); // Sets the boundary conditions for MMS
-    outputArray(Output_Folder, "S1", S[rhoid], 0);
+    outputArray(Output_Folder, "S1", S[rhoid], 0); // output Sols
     outputArray(Output_Folder, "S2", S[rhouid], 0);
     outputArray(Output_Folder, "S3", S[rhovid], 0);
     outputArray(Output_Folder, "S4", S[rhoetid], 0);
@@ -137,28 +129,28 @@ int main( int argc, char *argv[] )
     outputArray(Output_Folder, "u_MMS", V_MMS[rhouid], 0);
     outputArray(Output_Folder, "v_MMS", V_MMS[rhovid], 0);
     outputArray(Output_Folder, "p_MMS", V_MMS[rhoetid], 0);
- 
+
   }
   else // case 2 and 3 BC enforce and Source Determ
   {
     // zero the source term only need for MMS
     for (int eq = 0; eq < NEQ; eq++)
       S[eq] = MatrixXd::Constant(xc.rows(), xc.cols(), 0.0);
-    // set BC 
+    // set BC's
     setBC(V, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
   }
   primToCons(U, V, C);  U_RK = U; // initialize U_RK
-  ////////////////// ENTER TIME INTEGRATION LOOP ////////////////
-  MUSCL(V_L,V_R,V_B,V_T,V,C); // MATCHES for case 1
-  compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C);
-  computeRes(Res, F, G, S, Ai, Aj, Volume, C);
+  ////////////////// ENTER INITIALIZATION ////////////////
+  MUSCL(V_L,V_R,V_B,V_T,V,C);  // get the left Right Top and Bot states
+  compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C); //Roe or VL in C
+  computeRes(Res, F, G, S, Ai, Aj, Volume, C); // compute Residual knowing fluxes, sources, geometry
   // compute maxspeed
   computeMaxSpeed(MaxSpeed, V, C);
-  // compute timestep
+  // compute timestep BOTH Locally and Globally 
   dt_min = computeTimeStep(dt, Volume, Ai, Aj, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, MaxSpeed, V, C);
-  // compute norms and errors
-  L2hist.col(0) = computeL2(Res, C);
-  if (C.f_case == 1) // compute error
+  // compute norms and errors for the initial step
+  L2hist.col(0) = computeL2(Res, C); // Get the initial Residual for normalization
+  if (C.f_case == 1) // compute error for MMS case only
   {
     computeError(Error, V, V_MMS, C);
     Iterhist.col(0) = computeL2(Error, C);
@@ -236,16 +228,14 @@ int main( int argc, char *argv[] )
         ////// NEED TO DO BC'S NACA and Inlet
         setBC(V, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
       }
-      MUSCL(V_L,V_R,V_B,V_T,V,C); // MATCHES for case 1
-      compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C); // Use roe or vanleer inside of C
-      computeRes(Res, F, G, S, Ai, Aj, Volume, C);  
+      MUSCL(V_L,V_R,V_B,V_T,V,C); // Use new V for extrap to get primvars LRBT
+      compute2DFlux(F,G,n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, V_L, V_R, V_B, V_T, C); // get F, G
+      computeRes(Res, F, G, S, Ai, Aj, Volume, C);  // Get refined residual and get U_RK again
     }
-
-    // compute maxspeed get new dt
+    // compute maxspeed to get new dt
     computeMaxSpeed(MaxSpeed, V, C);
-    // compute timestep local and global
+    // compute timestep local and global with the new vars
     dt_min = computeTimeStep(dt, Volume, Ai, Aj, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, MaxSpeed, V, C);
-
     U = U_RK; // update RK
 
     L2hist.col(n+1) = computeL2(Res, C);
@@ -262,15 +252,6 @@ int main( int argc, char *argv[] )
         " u: " << L2hist(uid,n+1)/L2hist(uid,0) << 
         " v: " << L2hist(vid,n+1)/L2hist(vid,0) <<  
         " p: " << L2hist(pid,n+1)/L2hist(pid,0) << endl;
-        
-      /*
-      cout << 
-        "rho: "<< Iterhist(rhoid,n+1) << 
-        " u: " << Iterhist(uid,n+1)   << 
-        " v: " << Iterhist(vid,n+1)   <<  
-        " p: " << Iterhist(uid,n+1)   << endl;
-        */
- 
     }
 
     if ( n % C.wint == 0)
@@ -280,31 +261,35 @@ int main( int argc, char *argv[] )
       outputArray(Output_Folder, "v", V[vid], n);
       outputArray(Output_Folder, "p", V[pid], n);
 
-  outputArray(Output_Folder, "Res1", Res[rhoid], n);
-  outputArray(Output_Folder, "Res2", Res[rhouid], n);
-  outputArray(Output_Folder, "Res3", Res[rhovid], n);
-  outputArray(Output_Folder, "Res4", Res[rhoetid], n);
-
-
+      outputArray(Output_Folder, "Res1", Res[rhoid], n);
+      outputArray(Output_Folder, "Res2", Res[rhouid], n);
+      outputArray(Output_Folder, "Res3", Res[rhovid], n);
+      outputArray(Output_Folder, "Res4", Res[rhoetid], n);
     }
 
-    if (n==C.nmax/1000)
-      C.cfl=1.5;
+    if (n==C.nmax/500)
+      C.f_limiter=0; // turn off limiter
+
     // Check for convergence
     if ( L2hist(rhoid,n+1)/L2hist(rhoid,0) < C.tol && L2hist(uid,n+1)/L2hist(uid,0) < C.tol &&  L2hist(vid,n+1)/L2hist(vid,0) < C.tol && L2hist(pid,n+1)/L2hist(pid,0) < C.tol )
     {
+      // output final soln
       outputArray(Output_Folder, "rho", V[rhoid], n);
       outputArray(Output_Folder, "u", V[uid], n);
       outputArray(Output_Folder, "v", V[vid], n);
       outputArray(Output_Folder, "p", V[pid], n);
-
+      outputArray(Output_Folder, "rhou", U[rhouid], n);
+      outputArray(Output_Folder, "rhov", U[rhovid], n);
+      outputArray(Output_Folder, "rhoe", U[rhoetid], n);
 
       // Resize history to correct size
       L2hist.conservativeResize(NEQ,n);
-      Iterhist.conservativeResize(NEQ,n);
-
-      outputArray(Output_Folder, "IterErrHist", Iterhist, n);
       outputArray(Output_Folder, "L2Hist", L2hist, n);
+      if (C.f_case == 1) // resize iterhist and output only for case 
+      {
+        Iterhist.conservativeResize(NEQ,n);
+        outputArray(Output_Folder, "IterErrHist", Iterhist, n);
+      }
       break;
     }
     if (std::isnan(L2hist(0,n+1)/L2hist(0,0))) // check for NAN's
@@ -313,8 +298,6 @@ int main( int argc, char *argv[] )
       exit(1);
     }
   }
-
-
   return 0;
 }
 
