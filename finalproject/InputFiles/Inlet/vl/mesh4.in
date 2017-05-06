@@ -24,8 +24,8 @@ pint: 10;            // print interval (resid)
 
 num_ghost: 3;        // number of ghost layers added
 
-localdt: 0;          // 0 - use global dt, 1 - use local dt
+localdt: 1;          // 0 - use global dt, 1 - use local dt
 
 tol: 1.0e-10;        // iterative tolerance for the solution
 
-cfl: 0.8;            // CFL number for time stepping
+cfl: 1.5;            // CFL number for time stepping
