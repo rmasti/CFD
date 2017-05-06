@@ -241,7 +241,7 @@ void slipwallBC(
   {
     if (i_in_Begin == C.num_ghost) // detect whether the ghost cells are on the left (i=3)
     {
-      sign = -1; // the face points in the - direction
+      sign = -1; // the face points in the - direction if on the left
       BC_index = Begin[1];
     }
     else if (i_in_Begin == ni + C.num_ghost - 1) // now its on the right wall so sign + and 
@@ -268,12 +268,12 @@ void slipwallBC(
         vvel = V[vid](J+j, i_in_Begin - sign*i); // or push right for g
         Temp = T(J+j, i_in_Begin - sign*i); // temperature 
 
-        // get the velocity
+        // get the velocity into comp coords
         V[uid](J+j, I+sign*i) = -nx*(uvel*nx+vvel*ny) - ny*(-uvel*ny + vvel*nx);
         V[vid](J+j, I+sign*i) = -ny*(uvel*nx+vvel*ny) + nx*(-uvel*ny + vvel*nx);
 
         // extrapolate P
-        V[pid](J+j, I+sign*i) =  2.0*V[pid](J+j, I+sign*i - sign*1)-2.0*V[pid](J+j, I+sign*i - sign*2);
+        V[pid](J+j, I+sign*i) =  2.0*V[pid](J+j, I+sign*(i-1))-V[pid](J+j, I+sign*(i-2));
         T(J+j, I+sign*i) = Temp; // copy temperature extrapolate pressure then compute rho
         V[rhoid](J+j, I+sign*i) = V[pid](J+j, I+sign*i) / (R*T(J+j, I+sign*i));
       }
@@ -288,7 +288,7 @@ void slipwallBC(
     }
     else if ( j_in_Begin == nj + C.num_ghost-1 ) // top boundary
     {
-      sign = -1;
+      sign = 1;
       BC_index = Begin[0] + 1;
     }
     else
@@ -309,7 +309,7 @@ void slipwallBC(
         Temp = T(j_in_Begin - sign*j, I+i); // copy val
         V[uid](J+sign*j, I+i) = -nx*(uvel*nx+vvel*ny) - ny*(-uvel*ny + vvel*nx);
         V[vid](J+sign*j, I+i) = -ny*(uvel*nx+vvel*ny) + nx*(-uvel*ny + vvel*nx);
-        V[pid](J+sign*j, I+i) = 2.0*V[pid](J+sign*j-sign*1, I+i) - V[pid](J+sign*j-sign*2, I+i);
+        V[pid](J+sign*j, I+i) = 2.0*V[pid](J+sign*(j-1), I+i) - V[pid](J+sign*(j-2), I+i);
         T(J+sign*j, I+i) = Temp;
         V[rhoid](J+sign*j, I+i) = V[pid](J+sign*j, I+i) / (R*T(J+sign*j, I+i));
       }
@@ -467,7 +467,7 @@ void setBC(
       {
         int joint;
         // plotting the grid this is the joint of the upper bend
-        joint = 10*pow(2, C.f_mesh); 
+        joint = 10*pow(2, C.f_mesh);
 
         // MESH STRUCTURE
         //    joint                      Outlet End  
@@ -478,24 +478,26 @@ void setBC(
         //    ******************************
         //InB*******    A                  A
         //| *******     |                  |
-        //V******* lower wall          Outlet Begin
-        //******* <-sym wall
-
+        //V*******<-lower wall        Outlet Begin
+        //******* 
+        //   A
+        //   |
+        // sym wall
         // Index coordinates  see figure above
-        int Lower_Begin[2] = {0 , 0};
-        int Lower_End[2] = {0,ni-1};
+        int Lower_Begin[2]  = {0 , 0};
+        int Lower_End[2]    = {0,ni-1};
 
-        int Upper_Begin[2] = {nj-1, joint};
-        int Upper_End[2] = { nj-1,ni-1};
+        int Upper_Begin[2]  = {nj-1, joint};
+        int Upper_End[2]    = { nj-1,ni-1};
 
-        int Inlet_Begin[2] = {nj-1, 0};
-        int Inlet_End[2] = {nj-1 , joint-1};
+        int Inlet_Begin[2]  = {nj-1, 0};
+        int Inlet_End[2]    = {nj-1 , joint};
 
         int Outlet_Begin[2] = {0 , ni-1};
-        int Outlet_End[2] = {nj-1, ni-1};
+        int Outlet_End[2]   = {nj-1, ni-1};
 
-        int Sym_Begin[2] = {0,0};
-        int Sym_End[2] = {nj-1 , 0};
+        int Sym_Begin[2]    = {0,0};
+        int Sym_End[2]      = {nj-1 , 0};
 
         symmetricBC(V, Sym_Begin, Sym_End, C);
         inletBC(V,Inlet_Begin, Inlet_End, C);

@@ -215,7 +215,7 @@ int main( int argc, char *argv[] )
   /////////////// RUNGE KUTTA ITERATION ///////////////////////
 
   cout << "Entering Main Time Loop...." << endl;
-  for ( int n = 1; n < C.nmax; n++) 
+  for ( int n = 1; n < C.nmax-1; n++) 
   {
     for (int k = 0; k < C.rk_order; k++) 
     {
@@ -247,11 +247,11 @@ int main( int argc, char *argv[] )
 
     if ( n % C.pint == 0)
     {
-      cout << 
+      cout <<  
         "rho: " << L2hist(rhoid,n+1)/L2hist(rhoid,0) << 
         " u: " << L2hist(uid,n+1)/L2hist(uid,0) << 
         " v: " << L2hist(vid,n+1)/L2hist(vid,0) <<  
-        " p: " << L2hist(pid,n+1)/L2hist(pid,0) << endl;
+        " p: " << L2hist(pid,n+1)/L2hist(pid,0) << " n: " << n << endl;
     }
 
     if ( n % C.wint == 0)

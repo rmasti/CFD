@@ -1358,18 +1358,18 @@ void Enforce_BC(int num_ghost, vector<vector<double> > ni_x, vector<vector<doubl
     case 2: //-------------------------------------- 30 degree Inlet ------------------------------------------//
       {
 	int joint;
-	joint = 10*pow(2, flag_mesh);
+	joint = 10*pow(2, flag_mesh); // this gives the upper ben
 	
-	int LowerWall_Begin[2] = {0, 0};
-	int LowerWall_End[2] = {ni-1, 0};
-	int UpperWall_Begin[2] = {joint, nj-1};
-	int UpperWall_End[2] = {ni-1, nj-1};
-	int Inlet_Begin[2] = {0, nj-1};
-	int Inlet_End[2] = {joint-1, nj-1};
-	int Outlet_Begin[2] = {ni-1, 0};
-	int Outlet_End[2] = {ni-1, nj-1};
-	int SymtrWall_Begin[2] = {0,0};
-	int SymtrWall_End[2] = {0, nj-1};
+	int LowerWall_Begin[2]   = {0, 0};
+	int LowerWall_End[2]     = {ni-1, 0};
+	int UpperWall_Begin[2]   = {joint, nj-1};
+	int UpperWall_End[2]     = {ni-1, nj-1};
+	int Inlet_Begin[2]       = {0, nj-1};
+	int Inlet_End[2]         = {joint-1, nj-1};
+	int Outlet_Begin[2]      = {ni-1, 0};
+	int Outlet_End[2]        = {ni-1, nj-1};
+	int SymtrWall_Begin[2]   = {0,0};
+	int SymtrWall_End[2]     = {0, nj-1};
 	
 	Symmetric_BC(SymtrWall_Begin, SymtrWall_End, num_ghost, rho_tomb, u_tomb, v_tomb, P_tomb);
 	Inlet_BC(Inlet_Begin, Inlet_End, num_ghost, rho_tomb, u_tomb, v_tomb, P_tomb);
