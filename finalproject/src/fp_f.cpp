@@ -1036,7 +1036,7 @@ void computeFluxRoe(
       dw3 = du*nxhat(j,i) + dv*nyhat(j,i) + dp/(rho_Roe*a_Roe);
       dw4 = du*nxhat(j,i) + dv*nyhat(j,i) - dp/(rho_Roe*a_Roe);
 
-      // compute components of the speed for the Left and Right states
+      // convert the reimann problem to 1d
       U_hat_Roe_L = ( V_Left[uid](j,i)*nxhat(j,i) + V_Left[vid](j,i)*nyhat(j,i));
       U_hat_Roe_R = ( V_Right[uid](j,i)*nxhat(j,i) + V_Right[vid](j,i)*nyhat(j,i));
 
@@ -1047,8 +1047,8 @@ void computeFluxRoe(
       F_L[1] = V_Left[rhoid](j,i)*V_Left[uid](j,i)*U_hat_Roe_L + V_Left[pid](j,i)*nxhat(j,i);
       F_R[1] = V_Right[rhoid](j,i)*V_Right[uid](j,i)*U_hat_Roe_R + V_Right[pid](j,i)*nxhat(j,i);
 
-      F_L[2] = V_Left[rhoid](j,i)*V_Left[vid](j,i)*U_hat_Roe_L + V_Left[pid](j,i)*nxhat(j,i);
-      F_R[2] = V_Right[rhoid](j,i)*V_Right[vid](j,i)*U_hat_Roe_R + V_Right[pid](j,i)*nxhat(j,i);
+      F_L[2] = V_Left[rhoid](j,i)*V_Left[vid](j,i)*U_hat_Roe_L + V_Left[pid](j,i)*nyhat(j,i);
+      F_R[2] = V_Right[rhoid](j,i)*V_Right[vid](j,i)*U_hat_Roe_R + V_Right[pid](j,i)*nyhat(j,i);
 
       F_L[3] = V_Left[rhoid](j,i)*ht_L*U_hat_Roe_L;
       F_R[3] = V_Right[rhoid](j,i)*ht_R*U_hat_Roe_R;

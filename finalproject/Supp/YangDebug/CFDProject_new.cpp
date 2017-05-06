@@ -1368,8 +1368,8 @@ void Enforce_BC(int num_ghost, vector<vector<double> > ni_x, vector<vector<doubl
 	int Inlet_End[2]         = {joint-1, nj-1};
 	int Outlet_Begin[2]      = {ni-1, 0};
 	int Outlet_End[2]        = {ni-1, nj-1};
-	int SymtrWall_Begin[2]   = {0,0};
-	int SymtrWall_End[2]     = {0, nj-1};
+	int SymtrWall_Begin[2] = {0,0};
+	int SymtrWall_End[2] = {0, nj-1};
 	
 	Symmetric_BC(SymtrWall_Begin, SymtrWall_End, num_ghost, rho_tomb, u_tomb, v_tomb, P_tomb);
 	Inlet_BC(Inlet_Begin, Inlet_End, num_ghost, rho_tomb, u_tomb, v_tomb, P_tomb);
