@@ -267,7 +267,10 @@ int main( int argc, char *argv[] )
       outputArray(Output_Folder, "Res4", Res[rhoetid], n);
     }
 
-    //if (n==C.nmax/50)
+//    if (n==C.nmax/50)
+ //     C.f_limiter=0;
+      //C.cfl = 1.5;
+      //C.cfl = 1.5;
       //C.f_upwind = 2;
       //C.f_limiter=5; // turn off limiter
     // Check for convergence

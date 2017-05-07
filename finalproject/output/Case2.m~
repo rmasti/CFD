@@ -6,10 +6,72 @@ num_ghost=3;
 NEQ=4;
 
 %% Mesh 1
-x = load('Case_2_Mesh_1_Flux_1_order_2/xc-0.txt');
-y = load('Case_2_Mesh_1_Flux_1_order_2/yc-0.txt');
+
+x = load('Case_2_Mesh_4_Flux_1_order_1/xc-0.txt');
+y = load('Case_2_Mesh_4_Flux_1_order_1/yc-0.txt');
 ni = length(x(1,:)); 
 nj = length(x(:,1));
+
+% Grab the vals
+mms = zeros(nj, ni, NEQ);
+num = zeros(nj, ni, NEQ);
+% Prim var
+temp = load('Case_2_Mesh_4_Flux_1_order_1/rho-1437.txt');
+num(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
+temp = load('Case_2_Mesh_4_Flux_1_order_1/u-1437.txt');
+num(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
+temp = load('Case_2_Mesh_4_Flux_1_order_1/v-1437.txt');
+num(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
+temp = load('Case_2_Mesh_4_Flux_1_order_1/p-1437.txt');
+num(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
+
+f1 = figure(1);
+f1.PaperUnits = 'inches';
+f1.PaperPosition = [0 0 6 6];
+h1=subplot(2,2,1);
+p1 = get(h1,'pos');
+p1(3) = p1(3)+0.05; %right
+p1(1) = p1(1)-0.05; %left
+p1(4) = p1(4) + 0.05;
+p1(2) = p1(2) - 0.05;
+set(h1,'pos',p1)
+contourf(x,y,num(:,:,1) , 50, 'LineStyle', 'none')
+% set(gca,'visible','off')
+colorbar
+
+h2=subplot(2,2,2);
+p2 = get(h2,'pos');
+p2(3) = p2(3)+0.075; %right
+p2(1) = p2(1)-0.05; %left
+p2(4) = p2(4) + 0.05;
+p2(2) = p2(2) - 0.05;
+set(h2,'pos',p2)
+contourf(x,y, num(:,:,2), 50, 'LineStyle', 'none')
+% set(gca,'visible','off')
+colorbar
+
+h3=subplot(2,2,3);
+p3 = get(h3,'pos');
+p3(3) = p3(3)+0.05; %right
+p3(1) = p3(1)-0.05; %left
+p3(4) = p3(4) + 0.05;
+p3(2) = p3(2) - 0.05;
+set(h3,'pos',p3)
+contourf(x,y,num(:,:,3) , 50, 'LineStyle', 'none')
+% set(gca,'visible','off')
+colorbar
+
+h4=subplot(2,2,4);
+p4 = get(h4,'pos');
+p4(3) = p4(3)+0.075; %right
+p4(1) = p4(1)-0.05; %left
+p4(4) = p4(4) + 0.05;
+p4(2) = p4(2) - 0.05;
+set(h4,'pos',p4)
+contourf(x,y, num(:,:,4), 50, 'LineStyle', 'none')
+% set(gca,'visible','off')
+colorbar
+
 
 % % plot(x(21,1),y(21,1),'*')
 % plot(x(1,1),y(1,1),'r*') ; %lower wall begin
@@ -30,23 +92,6 @@ nj = length(x(:,1));
 % 
 % plot(x,y)
 % plot(x',y')
-
-mms = zeros(nj, ni, NEQ);
-num = zeros(nj, ni, NEQ);
-% conserved vars
-% rhou9 = load('Case_1_Mesh_1_Flux_1_order_2/rhou-98.txt');
-% rhov9 = load('Case_1_Mesh_1_Flux_1_order_2/rhov-98.txt');
-% rhoe9 = load('Case_1_Mesh_1_Flux_1_order_2/rhoe-98.txt');
-% primvar mms
-temp = load('Case_2_Mesh_1_Flux_1_order_2/rho-19285.txt');
-num(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_2_Mesh_1_Flux_1_order_2/u-19285.txt');
-num(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_2_Mesh_1_Flux_1_order_2/v-19285.txt');
-num(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_2_Mesh_1_Flux_1_order_2/p-19285.txt');
-num(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-
 
 %% Mesh 2
 % x17 = load('Case_1_Mesh_2_Flux_1_order_2/xc-0.txt');

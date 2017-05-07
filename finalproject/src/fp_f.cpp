@@ -68,9 +68,9 @@ void periodicBC(
       exit(1);
     }
     if (i_in_EndB > i_in_BeginB)
-      B_dir = 1;
+      B_dir = 1; // oppositie sign
     else if (i_in_EndB < i_in_BeginB)
-      B_dir = -1;
+      B_dir = -1;// opposite sign
     else
     {
       cerr << "ERROR: Periodic BC Index Begin != End!!" << endl;
@@ -80,11 +80,11 @@ void periodicBC(
     {
       for (int i = 0; i < L; i++)
       {
-        IA = i_in_BeginA;
-        IB = i_in_BeginB;
+        IA = i_in_BeginA; // i of 1st cell along bndry A
+        IB = i_in_BeginB; // i of 1st cell along bndry B
 
-        JA = j_in_BeginA + sign*1;
-        JB = j_in_BeginB + sign*1;
+        JA = j_in_BeginA + sign*1; // j index of ghost nearest to bndry A
+        JB = j_in_BeginB + sign*1; // j index of ghost nearest to bndry B
 
         for (int eq = 0; eq < NEQ; eq++)
         {
@@ -147,7 +147,7 @@ void farfieldBC(
 
   rho0 = P0/(R*T0);
   uvel0 = M*sqrt(GAMMA*R*T0)*cos(AOA*PI/180.0);
-  uvel0 = M*sqrt(GAMMA*R*T0)*sin(AOA*PI/180.0);
+  vvel0 = M*sqrt(GAMMA*R*T0)*sin(AOA*PI/180.0);
 
   // detect for direction of ghostcells
   if (i_in_Begin == i_in_End) // ghost in the j dir
@@ -491,7 +491,7 @@ void setBC(
         int Upper_End[2]    = { nj-1,ni-1};
 
         int Inlet_Begin[2]  = {nj-1, 0};
-        int Inlet_End[2]    = {nj-1 , joint};
+        int Inlet_End[2]    = {nj-1 , joint-1};
 
         int Outlet_Begin[2] = {0 , ni-1};
         int Outlet_End[2]   = {nj-1, ni-1};
@@ -530,23 +530,23 @@ void setBC(
         int i_Airfoil_End = 20*pow(2, C.f_mesh) - 1;
 
         // see figure above
-        int Farfield1_Begin[2] = {0,0};
-        int Farfield1_End[2] = {nj-1, 0};
+        int Farfield1_Begin[2]           = {0,0};
+        int Farfield1_End[2]             = {nj-1, 0};
 
-        int Farfield2_Begin[2] = {nj-1,0}; // same as 1
-        int Farfield2_End[2] = {nj-1, ni-1};
+        int Farfield2_Begin[2]           = {nj-1,0}; // same as 1
+        int Farfield2_End[2]             = {nj-1, ni-1};
 
-        int Farfield3_Begin[2] = {0, ni-1};
-        int Farfield3_End[2] = {nj-1, ni-1}; // same as 2
+        int Farfield3_Begin[2]           = {0, ni-1};
+        int Farfield3_End[2]             = {nj-1, ni-1}; // same as 2
 
-        int Periodic_A_Begin[2] = {0, 0}; 
-        int Periodic_A_End[2] = {0, i_Airfoil_Begin-1}; 
+        int Periodic_A_Begin[2]          = {0, 0}; 
+        int Periodic_A_End[2]            = {0, i_Airfoil_Begin-1}; 
 
-        int Periodic_B_Begin[2] = {0, i_Airfoil_End+1}; 
-        int Periodic_B_End[2] = {0, ni-1}; 
+        int Periodic_B_Begin[2]          = {0, ni-1}; 
+        int Periodic_B_End[2]            = {0, i_Airfoil_End+1}; 
 
-        int Airfoil_Begin[2] = {0, i_Airfoil_Begin};
-        int Airfoil_End[2] = {0, i_Airfoil_End};
+        int Airfoil_Begin[2]             = {0, i_Airfoil_Begin};
+        int Airfoil_End[2]               = {0, i_Airfoil_End};
 
 
         farfieldBC(V, Farfield1_Begin, Farfield1_End, C);

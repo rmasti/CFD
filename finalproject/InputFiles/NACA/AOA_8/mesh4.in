@@ -1,14 +1,14 @@
-f_case: 2;           // 1 for curvelinear MMS, 2 for 30 degree inlet, 3 for NACA
+f_case: 3;           // 1 for curvelinear MMS, 2 for 30 degree inlet, 3 for NACA
 
 f_mesh: 4;           // 1-4 for all cases except the curvilinear which has 6
 
 f_supersonic: 0;     // 1 for supersonic, 0 for subsonic
 
-f_AOA: 1;            // 1 for 0 deg, 2 for 8 deg for case 3 only
+f_AOA: 2;            // 1 for 0 deg, 2 for 8 deg for case 3 only
 
-f_upwind: 1;         // 1 for van leer, 2 for good ole Roe FDS
+f_upwind: 2;         // 1 for van leer, 2 for good ole Roe FDS
 
-f_limiter: 2;        // 0 for limiter OFF, 1 for van leer, 2 for Van albaada, 3 ospre, 4 MCD, 5 MinMOD, 6 superbee....
+f_limiter: 5;        // 0 for limiter OFF, 1 for van leer, 2 for Van albaada, 3 ospre, 4 MCD, 5 MinMOD, 6 superbee....
 
 f_eps: 0.0;            // 1 for 2nd order, 0 for 1st order
 

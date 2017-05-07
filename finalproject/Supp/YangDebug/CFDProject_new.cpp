@@ -1386,18 +1386,23 @@ void Enforce_BC(int num_ghost, vector<vector<double> > ni_x, vector<vector<doubl
 	int Airfoil_start = 4*pow(2, flag_mesh);
 	int Airfoil_end = 20*pow(2, flag_mesh) -1;
 	
-	int FarField1_Begin[2] = {0, 0} ;
-	int FarField1_End[2] = {0, nj-1};
-	int FarField2_Begin[2] = {0, nj-1};
-	int FarField2_End[2] = {ni-1, nj-1};
-	int FarField3_Begin[2] = {ni-1, 0};
-	int FarField3_End[2] = {ni-1, nj-1};
-	int PeriodicA_Begin[2] = {0, 0};
-	int PeriodicA_End[2] = {Airfoil_start-1, 0};
-	int PeriodicB_Begin[2] = {ni-1, 0};
-	int PeriodicB_End[2] = {Airfoil_end+1, 0};
-	int Air_Begin[2] = {Airfoil_start, 0};
-	int Air_End[2] = {Airfoil_end, 0};
+	int FarField1_Begin[2]     = {0, 0} ;
+	int FarField1_End[2]       = {0, nj-1};
+
+	int FarField2_Begin[2]     = {0, nj-1};
+	int FarField2_End[2]       = {ni-1, nj-1};
+
+	int FarField3_Begin[2]     = {ni-1, 0};
+	int FarField3_End[2]       = {ni-1, nj-1};
+
+	int PeriodicA_Begin[2]     = {0, 0};
+	int PeriodicA_End[2]       = {Airfoil_start-1, 0};
+
+	int PeriodicB_Begin[2]     = {ni-1, 0};
+	int PeriodicB_End[2]       = {Airfoil_end+1, 0};
+
+	int Air_Begin[2]           = {Airfoil_start, 0};
+	int Air_End[2]             = {Airfoil_end, 0};
 	
 	FarField_BC(FarField1_Begin, FarField1_End, num_ghost, rho_tomb, u_tomb, v_tomb, P_tomb);
 	FarField_BC(FarField2_Begin, FarField2_End, num_ghost, rho_tomb, u_tomb, v_tomb, P_tomb);
