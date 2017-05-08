@@ -267,8 +267,8 @@ int main( int argc, char *argv[] )
       outputArray(Output_Folder, "Res4", Res[rhoetid], n);
     }
 
-//    if (n==C.nmax/50)
- //     C.f_limiter=0;
+    if (n==C.nmax/200)
+       C.f_limiter=0;
       //C.cfl = 1.5;
       //C.cfl = 1.5;
       //C.f_upwind = 2;

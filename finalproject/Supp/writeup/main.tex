@@ -1,0 +1,185 @@
+
+
+\typeout{}\typeout{If latex fails to find aiaa-tc, read the README file!}
+%
+
+\documentclass[]{aiaa-tc}% insert '[draft]' option to show overfull boxes
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{esint}
+\usepackage{mathdesign}
+\title{AOE-6145 FVM Code Implementation and Validation}
+
+ \author{
+  Robert Masti%
+ }
+
+ \AIAApapernumber{YEAR-NUMBER}
+ \AIAAconference{Conference Name, Date, and Location}
+ \AIAAcopyright{\AIAAcopyrightD{YEAR}}
+
+ % Define commands to assure consistent treatment throughout document
+ \newcommand{\eqnref}[1]{(\ref{#1})}
+ \newcommand{\class}[1]{\texttt{#1}}
+ \newcommand{\package}[1]{\texttt{#1}}
+ \newcommand{\file}[1]{\texttt{#1}}
+ \newcommand{\BibTeX}{\textsc{Bib}\TeX}
+ \newcommand{\pderiv}[2]{\frac{\partial #1}{\partial #2}}
+ \newcommand*{\rttensor}[1]{\overline{\overline{#1}}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  What you did? how you did it? and what you got?
+\end{abstract}
+
+\section*{Nomenclature}
+
+\begin{tabbing}
+  XXX \= \kill% this line sets tab stop
+  $J$ \> Jacobian Matrix \\
+  $f$ \> Residual value vector \\
+  $x$ \> Variable value vector \\
+  $F$ \> Force, N \\
+  $m$ \> Mass, kg \\
+  FVM \> Finite Volume Method \\
+  MUSCL \> M \\
+  $\Delta x$ \> Variable displacement vector \\
+  $\alpha$ \> Acceleration, m/s\textsuperscript{2} \\[5pt]
+  \textit{Subscript}\\
+  $i$ \> Variable number \\
+ \end{tabbing}
+
+\section{Theory}
+
+Euler equations in 2D Cartesian coordinates were solved using the finite volume method to reach steady state solutions for various problems. Method of Manufactured Solutions was used to validate the numerical method, and to determine an observed order of accuracy. The numerical method is able to solve structured curvilinear geometry, with Roe, and Van Leer, numerical flux. The Euler equations in strong conservative form assuming a calorically perfect gas can be written as
+\begin{equation}\label{eq:eulrho}
+  \pderiv{\rho}{t} + \nabla\cdot(\rho \vec{v}) = 0
+\end{equation}
+\begin{equation}\label{eq:eulmtm}
+  \pderiv{\rho \vec{v}}{t} + \nabla\cdot(\rho \vec{v}\vec{v} + \mathbb{I} P) = 0
+\end{equation}
+\begin{equation}\label{eq:eulenergy}
+  \pderiv{\rho e_t}{t} + \nabla\cdot(\rho h_t \vec{v}) = 0
+\end{equation}
+where $\rho$ is the density, $\vec{v}$ is the vector bulk velocity, $t$ is time, $\mathbb{I}$ is the identity matrix, $P$ is the pressure, $e_t$ is the total specific energy, and $h_t$ is the total specific enthalpy. This can be reduced to 
+\begin{equation}\label{eq:eultensor}
+  \pderiv{\vec{U}}{t} + \nabla\cdot\rttensor{T} = 0
+\end{equation}
+where $\vec{U}$ is the vector of conserved variables, and $\rttensor{T}$ is the flux tensor. Equation~\ref{eq:eultensor} is valid for all coordinate systems, but in 2D Cartesian coordinates it can be expanded to
+\[
+  \pderiv{}{t}
+  \begin{bmatrix}
+    \rho \\
+    \rho u \\
+    \rho v \\
+    \rho e_t
+  \end{bmatrix}
+  + \pderiv{}{x}
+  \begin{bmatrix}
+    \rho u \\
+    \rho u^2 + P \\
+    \rho u v \\
+    \rho u h_t
+  \end{bmatrix}
+   + \pderiv{}{x}
+  \begin{bmatrix}
+    \rho v \\
+    \rho v u \\
+    \rho v^2 + P \\
+    \rho v h_t
+  \end{bmatrix}
+  =0
+\]
+where the first term is the conserved variable vector $\vec{U}$, the second term is the $\hat{x}$ direction flux, and the third term is the $\hat{y}$ direction flux. For a calorically perfect gas the total specific enthalpy can be related to the total specific energy by
+\begin{equation} \label{eq:idealgas}
+  h_t = e_t + \frac{P}{\rho}
+\end{equation}
+
+. Thus equations~\ref{eq:eulrho}-~\ref{eq:idealgas} combined make the closed system of equations used in this numerical model. There are modifications needed for curvilinear meshes on the fluxes see section~\ref{sec:nummod} for details.
+
+FVM requires the equations in the weak form, so equations~\ref{eq:eulrho}-~\ref{eq:eulenergy} are integrated over the volume of a given cell, and with further simplification using the divergence theorem equation~\ref{eq:eultensor} reduces to
+\begin{equation}\label{eq:eulfvm}
+  \iiint\limits_V \pderiv{\vec{U}}{t} dV + \oiint \rttensor{T} \cdot \vec{dA} = 0
+\end{equation}
+where $V$ is the volume, and $A$ is the area. This equation is then discretized an solved in FVM. 
+
+\section{Numerical Model}\label{sec:nummod}
+Using cell integrated averaged quantities the basic 2D discretization of equation \ref{eq:eulfvm} can be written as
+\begin{equation} \label{eq:euldisc}
+  \pderiv{\vec{U}}{t}V_{i,j} + \sum_{k=1}^4\rttensor{T_k}\cdot \vec{A_k} = 0
+\end{equation}
+
+
+Some say it is due to Rebek.\cite{rebek:82bk}
+
+\section{Results}
+
+In this section we will introduce some figures and tables.
+It can be seen in figure~\ref{f:magnetic_field} that magnetization is a
+function of applied field.
+%\begin{figure}[htb]% order of placement preference: here, top, bottom
+%\includegraphics{figure_magnet}
+%\caption{Magnetization as a function of applied field, which has
+%  borders so thick that they overwhelm the data and for some reason the
+%  ordinate label is rotated 90 degrees to make it difficult to
+%  read. This figure also demonstrates the dangers of using a bitmap
+%  as opposed to a vector image.}
+%\label{f:magnetic_field}
+%\end{figure}
+Sometimes writing meaningless text can be quiet easy, but other times
+one is hard pressed to keep the words flowing.\footnote{And sometimes
+things get carried away in endless detail.}
+Meanwhile back in the other world, table~\ref{t:scheme_comparison} shows
+a nifty comparison.\cite{Slutz2010}
+\begin{table}% no placement specified: defaults to here, top, bottom, page
+ \begin{center}
+  \caption{Variable and Fixed Coefficient Runge-Kutta Schemes as a
+           Function of Reynolds Number}
+  \label{t:scheme_comparison}
+  \begin{tabular}{rrr}
+       Re & Vary & Fixed \\\hline
+        1 &  868 & 4,271 \\
+       10 &  422 & 2,736 \\
+       25 &  252 & 1,374 \\
+       50 &  151 &   736 \\
+      100 &  110 &   387 \\
+      500 &   85 &   136 \\
+    1,000 &   77 &   117 \\
+    5,000 &   81 &    98 \\
+   10,000 &   82 &    99
+  \end{tabular}
+ \end{center}
+\end{table}
+
+\section{Analysis}
+Do the drag calcs among other things
+
+\section{Conclusion}
+
+After much typing, the paper can now conclude.
+Four rocks were next to the channel.
+This caused a few standing waves during the rip that one could ride on
+the way in or jump on the way out.
+
+\section*{Appendix}
+
+An appendix, if needed, should appear before the acknowledgments.
+Use the 'starred' version of the \verb|\section| commands to avoid
+section numbering.
+
+\section*{Acknowledgments}
+
+A place to recognize others.
+
+\begin{thebibliography}{9}% maximum number of references (for label width)
+ \bibitem{rebek:82bk}
+ Rebek, A., {\it Fickle Rocks}, Fink Publishing, Chesapeake, 1982.
+\end{thebibliography}
+
+\bibliographystyle{plainnat}
+\bibliography{reference}
+\end{document}

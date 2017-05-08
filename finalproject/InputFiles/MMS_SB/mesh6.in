@@ -14,7 +14,7 @@ f_eps: 1.0;            // 1 for 2nd order, 0 for 1st order
 
 f_kap: -1.0;         // kappa for determing upwind
 
-rk_order: 2;         // specify runge kutta order (2, 4)
+rk_order: 4;         // specify runge kutta order (2, 4)
 
 nmax: 1e6;           // max iteration number
 
@@ -28,4 +28,4 @@ localdt: 0;          // 0 - use global dt, 1 - use local dt
 
 tol: 1.0e-10;        // iterative tolerance for the solution
 
-cfl: 1.2;            // CFL number for time stepping
+cfl: 1.0;            // CFL number for time stepping

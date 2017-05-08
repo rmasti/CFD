@@ -1952,6 +1952,7 @@ string buildCaseFolder(
   ostringstream StrConvert3;
   ostringstream StrConvert4;
   ostringstream StrConvert5;
+  ostringstream StrConvert6;
   // grab and convert values to strings to write in folder name
   StrConvert1 << C.f_case;
   string Case = StrConvert1.str();
@@ -1963,10 +1964,13 @@ string buildCaseFolder(
   string Order = StrConvert4.str();
   StrConvert5 << C.f_AOA;
   string AOA = StrConvert5.str();
+  StrConvert6 << C.f_supersonic;
+  string SS = StrConvert6.str();
+
 
   string Output_Folder; // construct the name of the output folder based on C
   if (C.f_case != 3) // no AOA
-    Output_Folder  = "Case_"+Case+"_Mesh_"+Mesh+"_Flux_"+Flux+"_order_"+Order;
+    Output_Folder  = "Case_"+Case+"_Mesh_"+Mesh+"_Flux_"+Flux+"_SS_"+SS+"_order_"+Order;
   if (C.f_case == 3) // no AOA
     Output_Folder  = "Case_"+Case+"_Mesh_"+Mesh+"_Flux_"+Flux+"_AOA_"+AOA+"_order_"+Order;
 

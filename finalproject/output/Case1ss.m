@@ -6,185 +6,185 @@ num_ghost=3;
 NEQ=4;
 
 %% Mesh 1
-x9 = load('Case_1_Mesh_1_Flux_1_order_2/xc-0.txt');
-y9 = load('Case_1_Mesh_1_Flux_1_order_2/yc-0.txt');
+x9 = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/xc-0.txt');
+y9 = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/yc-0.txt');
 ni9 = length(x9(1,:)); 
 nj9 = length(x9(:,1));
 
 mms9 = zeros(nj9, ni9, NEQ);
 num9 = zeros(nj9, ni9, NEQ);
 % conserved vars
-rhou9 = load('Case_1_Mesh_1_Flux_1_order_2/rhou-362.txt');
-rhov9 = load('Case_1_Mesh_1_Flux_1_order_2/rhov-362.txt');
-rhoe9 = load('Case_1_Mesh_1_Flux_1_order_2/rhoe-362.txt');
+rhou9 = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/rhou-79.txt');
+rhov9 = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/rhov-79.txt');
+rhoe9 = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/rhoe-79.txt');
 % primvar mms
-temp = load('Case_1_Mesh_1_Flux_1_order_2/rho_MMS-0.txt');
+temp = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/rho_MMS-0.txt');
 mms9(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_1_Flux_1_order_2/u_MMS-0.txt');
+temp = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/u_MMS-0.txt');
 mms9(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_1_Flux_1_order_2/v_MMS-0.txt');
+temp = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/v_MMS-0.txt');
 mms9(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_1_Flux_1_order_2/p_MMS-0.txt');
+temp = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/p_MMS-0.txt');
 mms9(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 % primvar numsoln
-temp = load('Case_1_Mesh_1_Flux_1_order_2/rho-362.txt');
+temp = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/rho-79.txt');
 num9(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_1_Flux_1_order_2/u-362.txt');
+temp = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/u-79.txt');
 num9(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_1_Flux_1_order_2/v-362.txt');
+temp = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/v-79.txt');
 num9(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_1_Flux_1_order_2/p-362.txt');
+temp = load('Case_1_Mesh_1_Flux_1_SS_1_order_2/p-79.txt');
 num9(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 
 
 %% Mesh 2
-x17 = load('Case_1_Mesh_2_Flux_1_order_2/xc-0.txt');
-y17 = load('Case_1_Mesh_2_Flux_1_order_2/yc-0.txt');
+x17 = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/xc-0.txt');
+y17 = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/yc-0.txt');
 ni17 = length(x17(1,:)); 
 nj17 = length(x17(:,1));
 mms17 = zeros(nj17, ni17, NEQ);
 num17 = zeros(nj17, ni17, NEQ);
 % conserved vars
-rhou17 = load('Case_1_Mesh_2_Flux_1_order_2/rhou-731.txt');
-rhov17 = load('Case_1_Mesh_2_Flux_1_order_2/rhov-731.txt');
-rhoe17 = load('Case_1_Mesh_2_Flux_1_order_2/rhoe-731.txt');
+rhou17 = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/rhou-407.txt');
+rhov17 = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/rhov-407.txt');
+rhoe17 = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/rhoe-407.txt');
 % primvar mms
-temp = load('Case_1_Mesh_2_Flux_1_order_2/rho_MMS-0.txt');
+temp = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/rho_MMS-0.txt');
 mms17(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_2_Flux_1_order_2/u_MMS-0.txt');
+temp = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/u_MMS-0.txt');
 mms17(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_2_Flux_1_order_2/v_MMS-0.txt');
+temp = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/v_MMS-0.txt');
 mms17(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_2_Flux_1_order_2/p_MMS-0.txt');
+temp = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/p_MMS-0.txt');
 mms17(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 % primvar numsoln
-temp = load('Case_1_Mesh_2_Flux_1_order_2/rho-731.txt');
+temp = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/rho-407.txt');
 num17(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_2_Flux_1_order_2/u-731.txt');
+temp = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/u-407.txt');
 num17(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_2_Flux_1_order_2/v-731.txt');
+temp = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/v-407.txt');
 num17(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_2_Flux_1_order_2/p-731.txt');
+temp = load('Case_1_Mesh_2_Flux_1_SS_1_order_2/p-407.txt');
 num17(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 
 %% Mesh 3
-x33 = load('Case_1_Mesh_3_Flux_1_order_2/xc-0.txt');
-y33 = load('Case_1_Mesh_3_Flux_1_order_2/yc-0.txt');
+x33 = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/xc-0.txt');
+y33 = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/yc-0.txt');
 ni33 = length(x33(1,:)); 
 nj33 = length(x33(:,1));
 mms33 = zeros(nj33, ni33, NEQ);
 num33 = zeros(nj33, ni33, NEQ);
 % conserved vars
-rhou33 = load('Case_1_Mesh_3_Flux_1_order_2/rhou-1741.txt');
-rhov33 = load('Case_1_Mesh_3_Flux_1_order_2/rhov-1741.txt');
-rhoe33 = load('Case_1_Mesh_3_Flux_1_order_2/rhoe-1741.txt');
+rhou33 = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/rhou-2648.txt');
+rhov33 = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/rhov-2648.txt');
+rhoe33 = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/rhoe-2648.txt');
 % primvar mms
-temp = load('Case_1_Mesh_3_Flux_1_order_2/rho_MMS-0.txt');
+temp = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/rho_MMS-0.txt');
 mms33(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_3_Flux_1_order_2/u_MMS-0.txt');
+temp = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/u_MMS-0.txt');
 mms33(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_3_Flux_1_order_2/v_MMS-0.txt');
+temp = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/v_MMS-0.txt');
 mms33(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_3_Flux_1_order_2/p_MMS-0.txt');
+temp = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/p_MMS-0.txt');
 mms33(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 % primvar numsoln
-temp = load('Case_1_Mesh_3_Flux_1_order_2/rho-1741.txt');
+temp = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/rho-2648.txt');
 num33(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_3_Flux_1_order_2/u-1741.txt');
+temp = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/u-2648.txt');
 num33(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_3_Flux_1_order_2/v-1741.txt');
+temp = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/v-2648.txt');
 num33(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_3_Flux_1_order_2/p-1741.txt');
+temp = load('Case_1_Mesh_3_Flux_1_SS_1_order_2/p-2648.txt');
 num33(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 
 %% Mesh 4
-x65 = load('Case_1_Mesh_4_Flux_1_order_2/xc-0.txt');
-y65 = load('Case_1_Mesh_4_Flux_1_order_2/yc-0.txt');
+x65 = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/xc-0.txt');
+y65 = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/yc-0.txt');
 ni65 = length(x65(1,:)); 
 nj65 = length(x65(:,1));
 mms65 = zeros(nj65, ni65, NEQ);
 num65 = zeros(nj65, ni65, NEQ);
 % conserved vars
-rhou65 = load('Case_1_Mesh_4_Flux_1_order_2/rhou-3627.txt');
-rhov65 = load('Case_1_Mesh_4_Flux_1_order_2/rhov-3627.txt');
-rhoe65 = load('Case_1_Mesh_4_Flux_1_order_2/rhoe-3627.txt');
+rhou65 = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/rhou-638.txt');
+rhov65 = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/rhov-638.txt');
+rhoe65 = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/rhoe-638.txt');
 % primvar mms
-temp = load('Case_1_Mesh_4_Flux_1_order_2/rho_MMS-0.txt');
+temp = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/rho_MMS-0.txt');
 mms65(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_4_Flux_1_order_2/u_MMS-0.txt');
+temp = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/u_MMS-0.txt');
 mms65(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_4_Flux_1_order_2/v_MMS-0.txt');
+temp = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/v_MMS-0.txt');
 mms65(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_4_Flux_1_order_2/p_MMS-0.txt');
+temp = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/p_MMS-0.txt');
 mms65(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 % primvar numsoln
-temp = load('Case_1_Mesh_4_Flux_1_order_2/rho-3627.txt');
+temp = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/rho-638.txt');
 num65(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_4_Flux_1_order_2/u-3627.txt');
+temp = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/u-638.txt');
 num65(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_4_Flux_1_order_2/v-3627.txt');
+temp = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/v-638.txt');
 num65(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_4_Flux_1_order_2/p-3627.txt');
+temp = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/p-638.txt');
 num65(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 
 %% Mesh 5
-x129 = load('Case_1_Mesh_5_Flux_1_order_2/xc-0.txt');
-y129 = load('Case_1_Mesh_5_Flux_1_order_2/yc-0.txt');
+x129 = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/xc-0.txt');
+y129 = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/yc-0.txt');
 ni129 = length(x129(1,:)); 
 nj129 = length(x129(:,1));
 mms129 = zeros(nj129, ni129, NEQ);
 num129 = zeros(nj129, ni129, NEQ);
 % conserved vars
-rhou129 = load('Case_1_Mesh_5_Flux_1_order_2/rhou-9576.txt');
-rhov129 = load('Case_1_Mesh_5_Flux_1_order_2/rhov-9576.txt');
-rhoe129 = load('Case_1_Mesh_5_Flux_1_order_2/rhoe-9576.txt');
+rhou129 = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/rhou-761.txt');
+rhov129 = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/rhov-761.txt');
+rhoe129 = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/rhoe-761.txt');
 % primvar mms
-temp = load('Case_1_Mesh_5_Flux_1_order_2/rho_MMS-0.txt');
+temp = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/rho_MMS-0.txt');
 mms129(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_5_Flux_1_order_2/u_MMS-0.txt');
+temp = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/u_MMS-0.txt');
 mms129(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_5_Flux_1_order_2/v_MMS-0.txt');
+temp = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/v_MMS-0.txt');
 mms129(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_5_Flux_1_order_2/p_MMS-0.txt');
+temp = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/p_MMS-0.txt');
 mms129(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 % primvar numsoln
-temp = load('Case_1_Mesh_5_Flux_1_order_2/rho-9576.txt');
+temp = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/rho-761.txt');
 num129(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_5_Flux_1_order_2/u-9576.txt');
+temp = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/u-761.txt');
 num129(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_5_Flux_1_order_2/v-9576.txt');
+temp = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/v-761.txt');
 num129(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_5_Flux_1_order_2/p-9576.txt');
+temp = load('Case_1_Mesh_5_Flux_1_SS_1_order_2/p-761.txt');
 num129(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 
 %% Mesh 6
-x257 = load('Case_1_Mesh_6_Flux_1_order_2/xc-0.txt');
-y257 = load('Case_1_Mesh_6_Flux_1_order_2/yc-0.txt');
+x257 = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/xc-0.txt');
+y257 = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/yc-0.txt');
 ni257 = length(x257(1,:)); 
 nj257 = length(x257(:,1));
 mms257 = zeros(nj257, ni257, NEQ);
 num257 = zeros(nj257, ni257, NEQ);
 % conserved vars
-rhou257 = load('Case_1_Mesh_6_Flux_1_order_2/rhou-9523.txt');
-rhov257 = load('Case_1_Mesh_6_Flux_1_order_2/rhov-9523.txt');
-rhoe257 = load('Case_1_Mesh_6_Flux_1_order_2/rhoe-9523.txt');
+rhou257 = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/rhou-6568.txt');
+rhov257 = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/rhov-6568.txt');
+rhoe257 = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/rhoe-6568.txt');
 % primvar mms
-temp = load('Case_1_Mesh_6_Flux_1_order_2/rho_MMS-0.txt');
+temp = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/rho_MMS-0.txt');
 mms257(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_6_Flux_1_order_2/u_MMS-0.txt');
+temp = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/u_MMS-0.txt');
 mms257(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_6_Flux_1_order_2/v_MMS-0.txt');
+temp = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/v_MMS-0.txt');
 mms257(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_6_Flux_1_order_2/p_MMS-0.txt');
+temp = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/p_MMS-0.txt');
 mms257(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 % primvar numsoln
-temp = load('Case_1_Mesh_6_Flux_1_order_2/rho-9523.txt');
+temp = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/rho-6568.txt');
 num257(:,:,1) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_6_Flux_1_order_2/u-9523.txt');
+temp = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/u-6568.txt');
 num257(:,:,2) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_6_Flux_1_order_2/v-9523.txt');
+temp = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/v-6568.txt');
 num257(:,:,3) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
-temp = load('Case_1_Mesh_6_Flux_1_order_2/p-9523.txt');
+temp = load('Case_1_Mesh_6_Flux_1_SS_1_order_2/p-6568.txt');
 num257(:,:,4) = temp(num_ghost+1:end-num_ghost,num_ghost+1:end-num_ghost);
 
 %% Get the Error's
@@ -321,7 +321,7 @@ contourf(x257,y257, num257(:,:,4), 50, 'LineStyle', 'none')
 title('P')
 % set(gca,'visible','off')
 colorbar
-print(f1, 'MMS_mesh4_SS_soln.png', '-dpng', '-r300')
+print(f1, 'MMS_mesh6_SS_soln.png', '-dpng', '-r300')
 
 
 
