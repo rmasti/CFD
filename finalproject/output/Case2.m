@@ -82,7 +82,7 @@ A = load('Case_2_Mesh_4_Flux_1_order_1/Ai-0.txt');
 for n = 1:length(x(nj,:))
     F(n,1) = num(nj,n,4)*A(end,n);
 end
-
-avgP = sum(F)/(sum(A(end,:)))
+avgF = sum(F)/nj
+avgP = avgF/(sum(A(end,:)))
 
 

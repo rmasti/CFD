@@ -203,6 +203,56 @@ RelError65 = Error65./mms65;
 RelError129 = Error129./mms129;
 RelError257 = Error257./mms257;
 
+% 
+% f3 = figure(3);
+% f3.PaperUnits = 'inches';
+% f3.PaperPosition = [0 0 6 5];
+% h1=subplot(2,2,1);
+% p1 = get(h1,'pos');
+% p1(3) = p1(3)+0.075; %right
+% p1(1) = p1(1)-0.05; %left
+% p1(4) = p1(4) + 0.05;
+% p1(2) = p1(2) - 0.05;
+% set(h1,'pos',p1)
+% contourf(x257,y257,RelError257(:,:,1) , 50, 'LineStyle', 'none')
+% title('\rho')
+% % set(gca,'visible','off')
+% colorbar
+% h2=subplot(2,2,2);
+% p2 = get(h2,'pos');
+% p2(3) = p2(3)+0.1; %right
+% p2(1) = p2(1)-0.025; %left
+% p2(4) = p2(4) + 0.05;
+% p2(2) = p2(2) - 0.05;
+% set(h2,'pos',p2)
+% contourf(x257,y257, RelError257(:,:,2), 50, 'LineStyle', 'none')
+% title('u')
+% % set(gca,'visible','off')
+% colorbar
+% h3=subplot(2,2,3);
+% p3 = get(h3,'pos');
+% p3(3) = p3(3)+0.075; %right
+% p3(1) = p3(1)-0.05; %left
+% p3(4) = p3(4) + 0.05;
+% p3(2) = p3(2) - 0.05;
+% set(h3,'pos',p3)
+% contourf(x257,y257,RelError257(:,:,3) , 50, 'LineStyle', 'none')
+% title('v','FontSize',12)
+% % set(gca,'visible','off')
+% colorbar
+% h4=subplot(2,2,4);
+% p4 = get(h4,'pos');
+% p4(3) = p4(3)+0.1; %right
+% p4(1) = p4(1)-0.025; %left
+% p4(4) = p4(4) + 0.05;
+% p4(2) = p4(2) - 0.05;
+% set(h4,'pos',p4)
+% contourf(x257,y257, RelError257(:,:,4), 50, 'LineStyle', 'none')
+% title('P')
+% % set(gca,'visible','off')
+% colorbar
+%  print(f3, 'MMS_mesh6_SS_DE.png', '-dpng', '-r300')
+
 Linfnorm = zeros(6,NEQ);L2norm = zeros(6,NEQ);L1norm = zeros(6,NEQ);
 for eq = 1:NEQ
     L2norm(1,eq) = sqrt(norm(Error9(:,:,eq),2)^2/(ni9*nj9));
@@ -321,24 +371,46 @@ contourf(x257,y257, num257(:,:,4), 50, 'LineStyle', 'none')
 title('P')
 % set(gca,'visible','off')
 colorbar
-print(f1, 'MMS_mesh6_SS_soln.png', '-dpng', '-r300')
+% print(f1, 'MMS_mesh6_SS_soln.png', '-dpng', '-r300')
 
 
+%% Iterative history
+IterEr = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/IterErrHist-638.txt');
+L2hist = load('Case_1_Mesh_4_Flux_1_SS_1_order_2/L2Hist-638.txt');
+for i = 1:4
+IterEr(:,i) = IterEr(:,i)/max(max(mms129(:,:,i)));
+L2hist(:,i) = L2hist(:,i)/L2hist(1,i);
+end
 
 
+f3 = figure(3);
+% f1.PaperUnits = 'inches';
+%  f2.PaperPosition = [0 0 8 7];
+% L2 norm
 
+semilogy(IterEr(3:end,1),'-r')
+hold on
+semilogy(IterEr(3:end,2),'-b')
+semilogy(IterEr(3:end,3),'-g')
+semilogy(IterEr(3:end,4),'-k')
+% Linf norm
+semilogy(L2hist(3:end,1),'r--')
+hold on
+semilogy(L2hist(3:end,2),'b--')
+semilogy(L2hist(3:end,3),'g--')
+semilogy(L2hist(3:end,4),'k--')
 
+xlabel('Iteration')
+ylabel('Iterative Residual & Iterative Error')
+leg = legend('I.E. \rho','I.E. u', 'I.E. v', 'I.E. P',...
+    'L2 \rho', 'L2 u', 'L2 v', 'L2 P');
+% set(leg,'position',[0 0 0.2 0.2])
+set(leg,'Location','Best')
+set(leg,'FontSize',10)
 
-%RelError257; 
-
-% contourf(xnorm257, ynorm257, RelError257(:,:,1))
-
-
-colorbar
-
-
-
-
+grid on
+print(f3, 'Iter_SS.png','-dpng','-r300')
+hold off
 
 
 
