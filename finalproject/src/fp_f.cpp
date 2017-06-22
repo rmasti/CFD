@@ -8,7 +8,6 @@
  */
 #include "fp.hpp" //structure templates and func prototypes and libs
 
-
 void periodicBC(
     // This function will apply a periodic BC knowing a and b boundaries
     MatrixXd* V,           // output - Prim Var   
@@ -348,7 +347,7 @@ void outletBC(
   {
     for (int i = 0; i < C.num_ghost; i++)
     {
-      I = i_in_Begin + 1;
+      I = i_in_Begin;
       J = j_in_Begin;
       for (int eq = 0; eq < NEQ; eq++) // extrapolate from interior
         V[eq](J+j, I+i) = 2.0*V[eq](J+j, I+i-1) - V[eq](J+j, I+i-2);
@@ -493,8 +492,8 @@ void setBC(
         int Inlet_Begin[2]  = {nj-1, 0};
         int Inlet_End[2]    = {nj-1 , joint-1};
 
-        int Outlet_Begin[2] = {0 , ni-1};
-        int Outlet_End[2]   = {nj-1, ni-1};
+        int Outlet_Begin[2] = {0 , ni};
+        int Outlet_End[2]   = {nj-1, ni};
 
         int Sym_Begin[2]    = {0,0};
         int Sym_End[2]      = {nj-1 , 0};
@@ -504,12 +503,10 @@ void setBC(
         outletBC(V, Outlet_Begin, Outlet_End, C);
         slipwallBC(V, Upper_Begin, Upper_End, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
         slipwallBC(V, Lower_Begin, Lower_End, n_i_xhat, n_i_yhat, n_j_xhat, n_j_yhat, T, C);
-
         break;
       }
     case 3:
       {
-
         //  NACA             airfoil
         //Farfield1   FarField2--------------------------------
         //|            |                                      |
